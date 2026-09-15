@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v8
+/* RL7 HARD FIX v9
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix8';
+  var VERSION = '20260915-hardfix9';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -38,6 +38,81 @@
     arr = uniq(arr);
     localStorage.setItem(key, JSON.stringify(arr));
     return arr;
+  }
+
+
+  function ensureStatusStrip() {
+    var strip = document.getElementById('rl7-status-strip');
+    if (!strip) {
+      strip = document.createElement('div');
+      strip.id = 'rl7-status-strip';
+      strip.setAttribute('aria-hidden','true');
+      document.body.appendChild(strip);
+    }
+    return strip;
+  }
+
+  function _usableBgImage(el) {
+    if (!el) return null;
+    try {
+      var cs = getComputedStyle(el);
+      var img = cs.backgroundImage;
+      if (img && img !== 'none') {
+        return {
+          image: img,
+          size: cs.backgroundSize || 'cover',
+          position: cs.backgroundPosition || 'center top',
+          repeat: cs.backgroundRepeat || 'no-repeat',
+          color: cs.backgroundColor || 'transparent'
+        };
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function syncStatusStrip() {
+    var strip = ensureStatusStrip();
+    var page = document.getElementById('page-chat-room');
+    var chat = !!(page && page.classList.contains('active'));
+
+    if (!chat) {
+      /* Normal pages: use the same site theme gradient/background. */
+      strip.style.backgroundImage = 'var(--bg-gradient, none)';
+      strip.style.backgroundColor = 'var(--bg-main, #e9f7ed)';
+      strip.style.backgroundSize = 'cover';
+      strip.style.backgroundPosition = 'center top';
+      return;
+    }
+
+    /* Chat page: copy the nearest actual chat wallpaper/background instead of
+       guessing one fixed black/green color. This lets the safe-area visually
+       continue whatever is immediately below it. */
+    var candidates = [
+      page,
+      document.getElementById('chat-messages'),
+      page && page.querySelector('.chat-messages'),
+      page && page.querySelector('.chat-room-bg'),
+      page && page.querySelector('.chat-background'),
+      page && page.querySelector('[style*="background-image"]')
+    ];
+    var bg = null;
+    for (var i=0;i<candidates.length;i++) {
+      bg = _usableBgImage(candidates[i]);
+      if (bg) break;
+    }
+
+    if (bg) {
+      strip.style.backgroundImage = bg.image;
+      strip.style.backgroundColor = bg.color && bg.color !== 'rgba(0, 0, 0, 0)' ? bg.color : '#0d0f10';
+      strip.style.backgroundSize = bg.size === 'auto' ? 'cover' : bg.size;
+      strip.style.backgroundPosition = bg.position || 'center top';
+      strip.style.backgroundRepeat = bg.repeat || 'no-repeat';
+    } else {
+      /* If the wallpaper is stored on a pseudo/background layer we cannot
+         directly clone, sample the visual direction with a dark glass cap. */
+      strip.style.backgroundImage = 'none';
+      strip.style.backgroundColor = '#0d0f10';
+    }
   }
 
   /* =========================================================
@@ -86,6 +161,7 @@
         app.style.setProperty('background-color', color, 'important');
       }
     } catch (_) {}
+    syncStatusStrip();
   }
 
   /* =========================================================
@@ -164,6 +240,34 @@
       }
 
 
+
+
+      /* Real iOS safe-area strip.
+         Unlike the old 56px overlay, this occupies ONLY env(safe-area-inset-top).
+         Chat content is padded below it, so it never covers title/messages. */
+      #rl7-status-strip {
+        position:fixed !important;
+        top:0 !important;
+        left:0 !important;
+        right:0 !important;
+        height:env(safe-area-inset-top, 0px) !important;
+        min-height:env(safe-area-inset-top, 0px) !important;
+        pointer-events:none !important;
+        z-index:100001 !important;
+        background-color:#e9f7ed;
+        background-repeat:no-repeat !important;
+        background-size:cover !important;
+        background-position:center top !important;
+      }
+
+      /* black-translucent lets content extend under the iOS status bar.
+         Reserve that safe area INSIDE the chat page instead of letting the
+         header slide underneath the Dynamic Island/status icons. */
+      html.rl7-ios-fix #page-chat-room.page-fullscreen,
+      html.rl7-ios-fix #page-chat-room.page-fullscreen.active {
+        padding-top:env(safe-area-inset-top, 0px) !important;
+        box-sizing:border-box !important;
+      }
 
       /* Chat topbar readability */
       #page-chat-room .chat-room-title {
@@ -802,6 +906,7 @@
       if (chatPageForChrome && !chatPageForChrome.__rl7ChromeObserver) {
         chatPageForChrome.__rl7ChromeObserver = new MutationObserver(function(){
           syncChromeColor();
+          syncStatusStrip();
         });
         chatPageForChrome.__rl7ChromeObserver.observe(chatPageForChrome, {
           attributes:true,
@@ -809,6 +914,21 @@
         });
       }
     } catch (_) {}
+
+    try {
+      var chatPageBg = document.getElementById('page-chat-room');
+      if (chatPageBg && !chatPageBg.__rl7StatusBgObserver) {
+        chatPageBg.__rl7StatusBgObserver = new MutationObserver(function(){
+          syncStatusStrip();
+        });
+        chatPageBg.__rl7StatusBgObserver.observe(chatPageBg, {
+          subtree:true,
+          attributes:true,
+          attributeFilter:['style','class']
+        });
+      }
+    } catch (_) {}
+
     if(window.visualViewport){
       visualViewport.addEventListener('resize',syncViewport,{passive:true});
       visualViewport.addEventListener('scroll',syncViewport,{passive:true});
@@ -832,7 +952,9 @@
   function boot(){
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    installCSS();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
+    var oldStrip=document.getElementById('rl7-status-strip');
+    if(oldStrip) oldStrip.remove();
+    installCSS();ensureStatusStrip();syncChromeColor();syncStatusStrip();hardInputWhite();installViewport();installChatInputHitArea();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
