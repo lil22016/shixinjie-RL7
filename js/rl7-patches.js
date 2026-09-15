@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v9
+/* RL7 HARD FIX v10
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix9';
+  var VERSION = '20260915-hardfix10';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -151,15 +151,15 @@
     try {
       document.documentElement.classList.toggle('rl7-chat-active', chat);
       document.documentElement.style.setProperty('--rl7-chrome-bg', color);
-      document.documentElement.style.setProperty('background-color', color, 'important');
-      document.body.style.setProperty('background-color', color, 'important');
 
+      /* Do not paint html/body/#app black in chat.
+         If iOS reports a shorter visualViewport for a moment, a black root
+         becomes visible as a giant bottom band. Keep the real document on the
+         normal site background; only the status strip mirrors the chat. */
+      document.documentElement.style.setProperty('background-color', '#e9f7ed', 'important');
+      document.body.style.setProperty('background-color', '#e9f7ed', 'important');
       var app = document.getElementById('app');
-      if (app) {
-        /* This is behind the active full-screen chat page, so changing it is safe
-           and also gives the transparent iOS status bar the correct backdrop. */
-        app.style.setProperty('background-color', color, 'important');
-      }
+      if (app) app.style.setProperty('background-color', '#e9f7ed', 'important');
     } catch (_) {}
     syncStatusStrip();
   }
@@ -196,10 +196,13 @@
       }
       html.rl7-ios-fix #app.phone-frame {
         position:fixed !important;
-        inset:0 !important;
+        top:0 !important;
+        right:0 !important;
+        bottom:0 !important;
+        left:0 !important;
         width:100% !important;
-        height:100% !important;
-        min-height:0 !important;
+        height:100dvh !important;
+        min-height:100dvh !important;
         max-height:none !important;
         overflow:hidden !important;
         transform:none !important;
@@ -260,13 +263,20 @@
         background-position:center top !important;
       }
 
-      /* black-translucent lets content extend under the iOS status bar.
-         Reserve that safe area INSIDE the chat page instead of letting the
-         header slide underneath the Dynamic Island/status icons. */
-      html.rl7-ios-fix #page-chat-room.page-fullscreen,
-      html.rl7-ios-fix #page-chat-room.page-fullscreen.active {
-        padding-top:env(safe-area-inset-top, 0px) !important;
+      /* Keep the full chat page at full viewport height.
+         Reserve the iPhone top/bottom safe areas inside the fixed header/input
+         instead of shortening the whole page. This prevents the whole layout
+         from appearing shifted upward and prevents a large exposed strip below. */
+      html.rl7-ios-fix #page-chat-room .chat-room-topbar {
         box-sizing:border-box !important;
+        height:calc(48px + env(safe-area-inset-top, 0px)) !important;
+        padding-top:env(safe-area-inset-top, 0px) !important;
+        flex-shrink:0 !important;
+      }
+      html.rl7-ios-fix #page-chat-room .chat-input-zone {
+        padding-bottom:env(safe-area-inset-bottom, 0px) !important;
+        box-sizing:border-box !important;
+        flex-shrink:0 !important;
       }
 
       /* Chat topbar readability */
@@ -462,22 +472,34 @@
       var vv=window.visualViewport;
       var ih=window.innerHeight||document.documentElement.clientHeight||0;
       var vh=vv&&vv.height?vv.height:ih;
-      if (!lastFullH || (!keyboard && vh>lastFullH)) lastFullH=vh;
-      keyboard=(lastFullH-vh)>120;
+      var diff=(ih&&vh)?(ih-vh):0;
+      var kind=(vv&&vv.type)||'';
 
-      /* neutralize original offsetTop compensation */
+      /* Keyboard only when the visible viewport is substantially shorter.
+         Do not treat status bar / Home-indicator differences as a keyboard. */
+      keyboard=(kind==='virtual-keyboard') || (diff>=120 && ih>0 && diff/ih>=0.15);
+
       document.documentElement.style.setProperty('--chat-offset','0px','important');
-      document.documentElement.style.setProperty('--kbd','0px','important');
+      document.documentElement.style.setProperty('--kbd',keyboard?Math.max(0,Math.round(diff))+'px':'0px','important');
 
       if (chatActive()) {
-        var h=Math.round(vh||ih);
+        /* Critical fix:
+           - keyboard closed: use layout viewport / 100dvh equivalent, so the
+             page actually reaches the bottom of the screen.
+           - keyboard open: use visualViewport.height so the editor stays above
+             the keyboard. */
+        var h = keyboard ? Math.round(vh) : Math.round(Math.max(ih, vh));
         document.documentElement.style.setProperty('--rl7-chat-height',h+'px','important');
-        var p=document.getElementById('page-chat-room');
-        if(p){
-          p.style.setProperty('top','0px','important');
-          p.style.setProperty('height',h+'px','important');
-          p.style.setProperty('transform','none','important');
-          p.style.setProperty('translate','none','important');
+        var page=document.getElementById('page-chat-room');
+        if(page){
+          page.style.setProperty('top','0px','important');
+          page.style.setProperty('height',h+'px','important');
+          page.style.setProperty('min-height',h+'px','important');
+          page.style.setProperty('max-height',h+'px','important');
+          page.style.setProperty('transform','none','important');
+          page.style.setProperty('translate','none','important');
+          page.style.setProperty('padding-top','0px','important');
+          page.style.setProperty('padding-bottom','0px','important');
         }
         zeroScroll();
       }

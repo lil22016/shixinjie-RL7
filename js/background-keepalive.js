@@ -1,4 +1,4 @@
-/* RL7 Background Keepalive v9
+/* RL7 Background Keepalive v10
  * Best-effort iOS media keepalive. Designed to create a real MediaSession so
  * iOS can expose it on Lock Screen / Control Center / Dynamic Island when allowed.
  */
