@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v10
+/* RL7 HARD FIX v11
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix10';
+  var VERSION = '20260915-hardfix11';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -201,8 +201,11 @@
         bottom:0 !important;
         left:0 !important;
         width:100% !important;
-        height:100dvh !important;
-        min-height:100dvh !important;
+        /* In iOS standalone + black-translucent, 100dvh can exclude the
+           top safe-area while the page is still positioned at y=0. Add that
+           exact inset back so #app reaches the physical bottom edge. */
+        height:calc(100dvh + env(safe-area-inset-top, 0px)) !important;
+        min-height:calc(100dvh + env(safe-area-inset-top, 0px)) !important;
         max-height:none !important;
         overflow:hidden !important;
         transform:none !important;
@@ -244,6 +247,24 @@
 
 
 
+
+
+      html.rl7-ios-fix,
+      html.rl7-ios-fix body {
+        min-height:calc(100dvh + env(safe-area-inset-top, 0px)) !important;
+      }
+
+      /* Keep the chat input background visually continuous through the
+         Home-indicator safe area. Buttons remain above the indicator, but the
+         glass/background itself reaches the physical bottom edge. */
+      html.rl7-ios-fix #page-chat-room .chat-input-zone {
+        background:rgba(24,28,29,.42) !important;
+        -webkit-backdrop-filter:blur(18px) saturate(125%) !important;
+        backdrop-filter:blur(18px) saturate(125%) !important;
+      }
+      html.rl7-ios-fix #page-chat-room .chat-input-bar {
+        background:transparent !important;
+      }
 
       /* Real iOS safe-area strip.
          Unlike the old 56px overlay, this occupies ONLY env(safe-area-inset-top).
@@ -456,6 +477,17 @@
     x.style.setProperty('opacity','1','important');
   }
 
+  function safeTopPx(){
+    try{
+      var strip=document.getElementById('rl7-status-strip');
+      if(strip){
+        var h=strip.getBoundingClientRect().height;
+        if(h>=0 && h<120)return Math.round(h);
+      }
+    }catch(_){}
+    return 0;
+  }
+
   var lastFullH = 0, keyboard = false, raf = 0;
   function chatActive() {
     var p = document.getElementById('page-chat-room');
@@ -488,7 +520,14 @@
              page actually reaches the bottom of the screen.
            - keyboard open: use visualViewport.height so the editor stays above
              the keyboard. */
-        var h = keyboard ? Math.round(vh) : Math.round(Math.max(ih, vh));
+        var safeTop = safeTopPx();
+        /* black-translucent standalone quirk:
+           innerHeight / visualViewport.height may exclude the top safe-area
+           even though the fixed page begins at y=0. Without adding safeTop,
+           the whole app ends ~59px early on Dynamic-Island iPhones. */
+        var h = keyboard
+          ? Math.round(vh + safeTop)
+          : Math.round(Math.max(ih, vh) + safeTop);
         document.documentElement.style.setProperty('--rl7-chat-height',h+'px','important');
         var page=document.getElementById('page-chat-room');
         if(page){
