@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v5
+/* RL7 HARD FIX v6
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix5';
+  var VERSION = '20260915-hardfix6';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -63,14 +63,6 @@
       document.body.style.setProperty('background-color', color, 'important');
       var app = document.getElementById('app');
       if (app) app.style.setProperty('background-color', color, 'important');
-
-      var cap = document.getElementById('rl7-safe-top');
-      if (!cap) {
-        cap = document.createElement('div');
-        cap.id = 'rl7-safe-top';
-        document.body.appendChild(cap);
-      }
-      cap.style.background = color;
     } catch (_) {}
   }
 
@@ -86,18 +78,7 @@
     st.textContent = `
       html, body {
         background:#e9f7ed !important;
-      }
-      #rl7-safe-top {
-        position:fixed !important;
-        top:0 !important;
-        left:0 !important;
-        right:0 !important;
-        height:max(env(safe-area-inset-top, 0px), 56px) !important;
-        background:#e9f7ed !important;
-        pointer-events:none !important;
-        z-index:1 !important;
-      }
-      #app.phone-frame,
+      }      #app.phone-frame,
       .page,
       .page-fullscreen {
         isolation:isolate;
@@ -158,6 +139,65 @@
         color:rgba(255,255,255,.62) !important;
         -webkit-text-fill-color:rgba(255,255,255,.62) !important;
         opacity:1 !important;
+      }
+
+
+      /* chat bottom "+" panel: glass background + readable labels */
+      #chat-panel-area.open-plus,
+      #plus-panel,
+      #plus-panel.active,
+      .plus-panel,
+      .plus-menu-panel {
+        background:rgba(24,28,29,.66) !important;
+        -webkit-backdrop-filter:blur(24px) saturate(135%) !important;
+        backdrop-filter:blur(24px) saturate(135%) !important;
+      }
+
+      #plus-panel.active {
+        border-top:1px solid rgba(255,255,255,.12) !important;
+        box-shadow:0 -10px 28px rgba(0,0,0,.18) !important;
+      }
+
+      #plus-panel .plus-menu-item,
+      #plus-panel .plus-menu-item *,
+      .plus-menu-panel .plus-menu-item,
+      .plus-menu-panel .plus-menu-item * {
+        color:rgba(255,255,255,.96) !important;
+      }
+
+      #plus-panel .plus-menu-item span,
+      #plus-panel .plus-menu-item .label,
+      #plus-panel .plus-menu-label,
+      #plus-panel .plus-item-label,
+      .plus-menu-panel .plus-menu-item span,
+      .plus-menu-panel .plus-menu-label {
+        color:#fff !important;
+        opacity:1 !important;
+        text-shadow:0 1px 3px rgba(0,0,0,.75) !important;
+      }
+
+      #plus-panel .plus-menu-item i,
+      #plus-panel .plus-menu-item svg,
+      .plus-menu-panel .plus-menu-item i,
+      .plus-menu-panel .plus-menu-item svg {
+        color:#fff !important;
+        fill:currentColor;
+      }
+
+      #plus-panel .plus-menu-item > div:first-child,
+      #plus-panel .plus-menu-icon,
+      #plus-panel .plus-item-icon,
+      .plus-menu-panel .plus-menu-icon {
+        background:rgba(255,255,255,.10) !important;
+        border:1px solid rgba(255,255,255,.06) !important;
+      }
+
+      /* keep the text input bar itself lightly glassy as well */
+      .chat-input-bar {
+        background:rgba(24,28,29,.42) !important;
+        -webkit-backdrop-filter:blur(18px) saturate(125%) !important;
+        backdrop-filter:blur(18px) saturate(125%) !important;
+        border-top:1px solid rgba(255,255,255,.08) !important;
       }
 
       /* generic sheets */
@@ -713,6 +753,8 @@
   }
 
   function boot(){
+    var staleCap=document.getElementById('rl7-safe-top');
+    if(staleCap) staleCap.remove();
     installCSS();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
     installPats();installWhereabouts();
 
