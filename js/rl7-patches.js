@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v13
+/* RL7 HARD FIX v14
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix13';
+  var VERSION = '20260915-hardfix14';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -407,6 +407,81 @@
         border-top:1px solid rgba(255,255,255,.08) !important;
       }
 
+
+      /* =========================================================
+         v14 — DECOUPLE BOTTOM CONTROLS FROM CONTENT LAYOUT
+         ========================================================= */
+
+      /* Home app grid stays exactly where v13 put it.
+         The navigation bar is independently anchored to #app's physical bottom. */
+      html.rl7-ios-fix #app.phone-frame > .bottom-nav {
+        position:absolute !important;
+        left:0 !important;
+        right:0 !important;
+        bottom:0 !important;
+        top:auto !important;
+        margin:0 auto !important;
+        padding-top:4px !important;
+        padding-bottom:var(--safe-bottom, env(safe-area-inset-bottom, 0px)) !important;
+        transform:none !important;
+        translate:none !important;
+        box-sizing:border-box !important;
+        z-index:500 !important;
+      }
+
+      /* Chat input is no longer a flex child that can be pushed around by
+         message height / viewport recalculation. It is independently pinned
+         to the bottom edge of the chat page. */
+      html.rl7-ios-fix #page-chat-room .chat-input-zone {
+        position:absolute !important;
+        left:0 !important;
+        right:0 !important;
+        bottom:0 !important;
+        top:auto !important;
+        width:100% !important;
+        min-height:0 !important;
+        padding-bottom:env(safe-area-inset-bottom, 0px) !important;
+        box-sizing:border-box !important;
+        display:block !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        transform:none !important;
+        translate:none !important;
+        z-index:40 !important;
+        background:rgba(238,247,242,.72) !important;
+        -webkit-backdrop-filter:blur(20px) saturate(130%) !important;
+        backdrop-filter:blur(20px) saturate(130%) !important;
+        border-top:1px solid rgba(255,255,255,.34) !important;
+      }
+
+      /* When the software keyboard is already occupying the iPhone bottom safe
+         area, do not add the Home-indicator inset a second time. */
+      html.rl7-keyboard-open #page-chat-room .chat-input-zone {
+        padding-bottom:0 !important;
+      }
+
+      /* Override the older dark glass rule: the actual typing row uses the
+         same light glass as its containing zone, so there is no black band. */
+      html.rl7-ios-fix #page-chat-room .chat-input-bar {
+        background:transparent !important;
+        -webkit-backdrop-filter:none !important;
+        backdrop-filter:none !important;
+        border-top:0 !important;
+      }
+
+      /* The input is now overlaid independently, so reserve scrollable message
+         space for it. This does NOT move the input itself. */
+      html.rl7-ios-fix #page-chat-room .chat-messages {
+        box-sizing:border-box !important;
+        padding-bottom:calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+
+      /* Plus/sticker panels grow upward from the pinned bottom zone. */
+      html.rl7-ios-fix #page-chat-room:has(.chat-panel-area.open-plus) .chat-messages,
+      html.rl7-ios-fix #page-chat-room:has(.chat-panel-area.open-sticker) .chat-messages {
+        padding-bottom:calc(76px + var(--chat-panel-h, 300px) + env(safe-area-inset-bottom, 0px)) !important;
+      }
+
       /* generic sheets */
       .rl7-sheet {
         position:fixed; inset:0; z-index:100000;
@@ -514,6 +589,7 @@
       var kind=(vv&&vv.type)||'';
 
       keyboard=(kind==='virtual-keyboard') || (diff>=120 && appH>0 && diff/appH>=0.15);
+      document.documentElement.classList.toggle('rl7-keyboard-open', !!keyboard);
 
       /* ONE geometry owner:
          - closed keyboard: chat exactly equals the rendered #app height
