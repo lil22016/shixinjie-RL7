@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v21
+/* RL7 HARD FIX v22
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix21';
+  var VERSION = '20260915-hardfix22';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -162,54 +162,70 @@
       }
 
 
-      /* v21 — two targeted fixes only */
+      /* v22 — stable bottom + safe chat header */
 
-      /* CHAT:
-         On this iPhone/PWA, --chat-h already has the correct full visual height,
-         but the fixed chat page was starting at y=0 under the status bar.
-         Shifting the whole chat by safe-top reproduces the user's manual pull:
-         top clears the iOS UI and the unchanged height reaches the physical bottom. */
-      html.rl7-ios-fix #page-chat-room.page-fullscreen,
-      html.rl7-ios-fix #page-chat-room.page-fullscreen.active {
-        top:calc(env(safe-area-inset-top, 0px) + var(--chat-offset, 0px)) !important;
+      /* CHAT, keyboard closed:
+         Fill the fixed viewport by edges instead of trusting the first
+         visualViewport height sample. This removes the initial bottom gap. */
+      html.rl7-ios-fix:not(.rl7-kbd-open) #page-chat-room.page-fullscreen,
+      html.rl7-ios-fix:not(.rl7-kbd-open) #page-chat-room.page-fullscreen.active {
+        top:0 !important;
+        bottom:0 !important;
+        height:auto !important;
       }
 
-      /* While keyboard is open, subtract safe-top from chat height so the bottom
-         remains exactly at the keyboard top instead of extending behind it. */
+      /* CHAT, keyboard open:
+         Return geometry ownership to the site's original keyboard variables. */
       html.rl7-kbd-open #page-chat-room.page-fullscreen,
       html.rl7-kbd-open #page-chat-room.page-fullscreen.active {
-        height:calc(var(--chat-h, 100dvh) - env(safe-area-inset-top, 0px)) !important;
+        top:var(--chat-offset, 0px) !important;
+        bottom:auto !important;
+        height:var(--chat-h, calc(100% - var(--kbd, 0px))) !important;
       }
 
-      /* HOME NAV PORTAL:
-         The nav is moved out of #app at runtime and becomes a top-level body child.
-         That avoids #app/page clipping and makes its stacking order unambiguous. */
-      body > .bottom-nav.rl7-nav-portal {
+      /* Only the topbar is pushed below iPhone system UI.
+         The rest of the chat page is NOT shifted. */
+      #page-chat-room .chat-room-topbar {
+        height:calc(48px + env(safe-area-inset-top, 0px)) !important;
+        min-height:calc(48px + env(safe-area-inset-top, 0px)) !important;
+        padding-top:env(safe-area-inset-top, 0px) !important;
+        box-sizing:border-box !important;
+      }
+
+      /* HOME NAV:
+         Keep it in its original #app hierarchy; make the bar itself cover the
+         bottom safe-area so no separate green strip can sit over it. */
+      #app.phone-frame > .bottom-nav {
         position:fixed !important;
         left:0 !important;
         right:0 !important;
         top:auto !important;
-        bottom:calc(0px - env(safe-area-inset-top, 0px)) !important;
+        bottom:0 !important;
         margin:0 auto !important;
-        padding:6px 18px 8px !important;
         z-index:100000 !important;
+        padding-top:6px !important;
+        padding-left:18px !important;
+        padding-right:18px !important;
+        padding-bottom:max(6px, env(safe-area-inset-bottom, 0px)) !important;
         transform:none !important;
         translate:none !important;
-        background:transparent !important;
-        background-image:none !important;
+        background-color:var(--bg-main, #e9f7ed) !important;
+        background-image:var(--bg-gradient, none) !important;
+        background-attachment:fixed !important;
+        background-repeat:no-repeat !important;
+        background-size:cover !important;
         backdrop-filter:none !important;
         -webkit-backdrop-filter:none !important;
-        pointer-events:none !important;
-      }
-      body > .bottom-nav.rl7-nav-portal .nav-item {
         pointer-events:auto !important;
       }
-      html.rl7-chat-pinned body > .bottom-nav.rl7-nav-portal {
+
+      /* The home nav must never cover the fullscreen chat. */
+      html.rl7-chat-pinned #app.phone-frame > .bottom-nav {
         visibility:hidden !important;
         pointer-events:none !important;
       }
 
-      /* Blend the formerly visible bottom strip into the actual app background. */
+      /* Make the root/safe-area background the same visual surface as home. */
       html.rl7-ios-fix:not(.rl7-chat-pinned),
       html.rl7-ios-fix:not(.rl7-chat-pinned) body {
         background-color:var(--bg-main, #e9f7ed) !important;
@@ -217,14 +233,6 @@
         background-attachment:fixed !important;
         background-repeat:no-repeat !important;
         background-size:cover !important;
-      }
-
-      /* Portal icon sizing: keep the requested larger icons. */
-      body > .bottom-nav.rl7-nav-portal .nav-icon-circle {
-        width:48px !important;
-        height:48px !important;
-        border-radius:17px !important;
-        font-size:22px !important;
       }
 
       /* chat bottom "+" panel: glass background + readable labels */
@@ -391,20 +399,20 @@
     document.documentElement.classList.toggle('rl7-kbd-open', keyboardOpenNow());
   }
 
-  function portalHomeNav() {
+  function restoreHomeNav() {
+    /* v21 moved the nav to <body>. Undo that if a hot reload happens before a
+       full page restart; on a normal reload this is already a no-op. */
     try {
       var nav = document.querySelector('.bottom-nav');
-      if (!nav) return;
-      if (!nav.classList.contains('rl7-nav-portal')) {
-        nav.classList.add('rl7-nav-portal');
-        document.body.appendChild(nav);
-      }
+      var app = document.getElementById('app');
+      if (!nav || !app) return;
+      nav.classList.remove('rl7-nav-portal');
+      if (nav.parentElement !== app) app.appendChild(nav);
     } catch (_) {}
   }
 
   function syncChatStateClass() {
-    var active = chatActive();
-    document.documentElement.classList.toggle('rl7-chat-pinned', active);
+    document.documentElement.classList.toggle('rl7-chat-pinned', chatActive());
     syncKeyboardClass();
   }
 
@@ -845,10 +853,10 @@
      LISTENERS / BOOT
      ========================================================= */
   function installViewport(){
-    if(window.__rl7v21Installed)return;
-    window.__rl7v21Installed=true;
+    if(window.__rl7v22Installed)return;
+    window.__rl7v22Installed=true;
 
-    portalHomeNav();
+    restoreHomeNav();
     syncChatStateClass();
 
     var chatPage = document.getElementById('page-chat-room');
@@ -864,15 +872,16 @@
       window.visualViewport.addEventListener('scroll', syncKeyboardClass, {passive:true});
     }
     window.addEventListener('resize', syncKeyboardClass, {passive:true});
+
     window.addEventListener('pageshow',function(){
-      portalHomeNav();
+      restoreHomeNav();
       syncChatStateClass();
       hardInputWhite();
     },{passive:true});
 
     document.addEventListener('visibilitychange',function(){
       if(!document.hidden) {
-        portalHomeNav();
+        restoreHomeNav();
         syncChatStateClass();
       }
     });
@@ -884,6 +893,7 @@
         setTimeout(syncKeyboardClass,120);
       }
     },true);
+
     document.addEventListener('focusout',function(e){
       if(e.target && e.target.id==='chat-input') {
         setTimeout(syncKeyboardClass,80);
@@ -892,7 +902,7 @@
     },true);
 
     setInterval(function(){
-      portalHomeNav();
+      restoreHomeNav();
       syncChatStateClass();
       hardInputWhite();
       syncChromeColor();
@@ -905,7 +915,7 @@
     document.documentElement.classList.remove('rl7-chat-active','rl7-keyboard-open');
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();portalHomeNav();syncChatStateClass();
+    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();restoreHomeNav();syncChatStateClass();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
