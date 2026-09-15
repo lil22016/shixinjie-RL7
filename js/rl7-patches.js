@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v18
+/* RL7 HARD FIX v19
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix18';
+  var VERSION = '20260915-hardfix19';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -81,49 +81,12 @@
     var st = document.createElement('style');
     st.id = 'rl7-hardfix3-style';
     st.textContent = `
-      html, body {
-        background:#e9f7ed !important;
-      }      #app.phone-frame,
+      /* v19: DO NOT override html/body/#app/chat geometry.
+         The site's own app.js + pages-chatroom.css are the only viewport engine. */
+      #app.phone-frame,
       .page,
       .page-fullscreen {
         isolation:isolate;
-      }
-      html.rl7-ios-fix,
-      html.rl7-ios-fix body {
-        width:100% !important;
-        max-width:100% !important;
-        overflow:hidden !important;
-        overscroll-behavior:none !important;
-      }
-      html.rl7-ios-fix body {
-        position:fixed !important;
-        inset:0 !important;
-        margin:0 !important;
-        padding:0 !important;
-      }
-      html.rl7-ios-fix #app.phone-frame {
-        position:fixed !important;
-        inset:0 !important;
-        width:100% !important;
-        height:100% !important;
-        min-height:0 !important;
-        max-height:none !important;
-        overflow:hidden !important;
-        transform:none !important;
-        translate:none !important;
-        margin:0 !important;
-        background:var(--bg-gradient, var(--bg-main, var(--rl7-chrome-bg,#e9f7ed))) !important;
-      }
-      html.rl7-ios-fix #page-chat-room.page-fullscreen,
-      html.rl7-ios-fix #page-chat-room.page-fullscreen.active {
-        position:fixed !important;
-        top:0 !important; right:0 !important; bottom:auto !important; left:0 !important;
-        width:100% !important;
-        height:var(--rl7-chat-height,100dvh) !important;
-        min-height:0 !important; max-height:none !important;
-        transform:none !important; translate:none !important;
-        margin:0 !important; padding-top:0 !important; padding-bottom:0 !important;
-        overflow:hidden !important;
       }
 
       /* force the actual chat editor to readable white */
@@ -345,37 +308,32 @@
     try { document.documentElement.scrollTop=0; document.body.scrollTop=0; } catch(_){}
   }
   function syncViewport() {
-    if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(function(){
-      raf=0;
-      var vv=window.visualViewport;
-      var ih=window.innerHeight||document.documentElement.clientHeight||0;
-      var vh=vv&&vv.height?vv.height:ih;
-      if (!lastFullH || (!keyboard && vh>lastFullH)) lastFullH=vh;
-      keyboard=(lastFullH-vh)>120;
-
-      /* neutralize original offsetTop compensation */
-      document.documentElement.style.setProperty('--chat-offset','0px','important');
-      document.documentElement.style.setProperty('--kbd','0px','important');
-
-      if (chatActive()) {
-        var h=Math.round(vh||ih);
-        document.documentElement.style.setProperty('--rl7-chat-height',h+'px','important');
-        var p=document.getElementById('page-chat-room');
-        if(p){
-          p.style.setProperty('top','0px','important');
-          p.style.setProperty('height',h+'px','important');
-          p.style.setProperty('transform','none','important');
-          p.style.setProperty('translate','none','important');
-        }
-        zeroScroll();
-      }
-      hardInputWhite();
-    });
+    /* v19: layout intentionally left to the original app.js.
+       This helper only re-applies visual input styling. */
+    hardInputWhite();
   }
+
+  function releaseLayoutControl() {
+    try {
+      document.documentElement.style.removeProperty('--rl7-chat-height');
+      var page = document.getElementById('page-chat-room');
+      if (page) {
+        ['top','right','bottom','left','width','height','min-height','max-height',
+         'transform','translate','margin','padding-top','padding-bottom',
+         'box-sizing','position'].forEach(function(prop){
+          page.style.removeProperty(prop);
+        });
+      }
+    } catch (_) {}
+  }
+
   function stagedRecovery(){
-    [0,30,80,160,320,650,1100].forEach(function(ms){
-      setTimeout(function(){syncViewport();hardInputWhite();syncChromeColor();},ms);
+    [0,60,180,420].forEach(function(ms){
+      setTimeout(function(){
+        releaseLayoutControl();
+        hardInputWhite();
+        syncChromeColor();
+      },ms);
     });
   }
 
@@ -774,7 +732,6 @@
       hardInputWhite();
       setTimeout(function(){
         hardInputWhite();
-        syncViewport();
       },40);
     }
 
@@ -787,25 +744,24 @@
      LISTENERS / BOOT
      ========================================================= */
   function installViewport(){
-    if(window.__rl7v3viewport)return;window.__rl7v3viewport=true;
-    if(window.visualViewport){
-      visualViewport.addEventListener('resize',syncViewport,{passive:true});
-      visualViewport.addEventListener('scroll',syncViewport,{passive:true});
-    }
-    window.addEventListener('resize',syncViewport,{passive:true});
-    window.addEventListener('pageshow',stagedRecovery,{passive:true});
-    window.addEventListener('focus',stagedRecovery,{passive:true});
-    window.addEventListener('orientationchange',stagedRecovery,{passive:true});
-    document.addEventListener('visibilitychange',function(){if(!document.hidden)stagedRecovery();});
-    document.addEventListener('focusin',function(e){if(e.target&&e.target.id==='chat-input')stagedRecovery();},true);
+    if(window.__rl7v19VisualListeners)return;
+    window.__rl7v19VisualListeners=true;
 
-    /* Do NOT observe the whole DOM here.
-       v3's subtree MutationObserver could be triggered by its own poke-card
-       innerHTML rewrite and create an infinite loop on the “基础” page. */
+    /* No visualViewport geometry listeners here.
+       Original js/app.js owns --chat-h / --kbd / --chat-offset. */
+    window.addEventListener('pageshow',stagedRecovery,{passive:true});
+    window.addEventListener('focus',function(){ hardInputWhite(); },{passive:true});
+    document.addEventListener('visibilitychange',function(){
+      if(!document.hidden) stagedRecovery();
+    });
+    document.addEventListener('focusin',function(e){
+      if(e.target && e.target.id==='chat-input') hardInputWhite();
+    },true);
+
     setInterval(function(){
       hardInputWhite();
       syncChromeColor();
-    },1200);
+    },1500);
   }
 
   function boot(){
@@ -814,7 +770,7 @@
     document.documentElement.classList.remove('rl7-chat-active','rl7-keyboard-open');
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    installCSS();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
+    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
@@ -826,8 +782,8 @@
 
     [50,160,400,900,1800,3500].forEach(function(ms){
       setTimeout(function(){
-        syncChromeColor();hardInputWhite();
-        installPats();installWhereabouts();syncViewport();
+        releaseLayoutControl();syncChromeColor();hardInputWhite();
+        installPats();installWhereabouts();
         window.startKeepAliveAudio=startKeepAliveStrong;
         window.stopKeepAliveAudio=stopKeepAliveStrong;
       },ms);
