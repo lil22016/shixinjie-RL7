@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v7
+/* RL7 HARD FIX v8
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix7';
+  var VERSION = '20260915-hardfix8';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -49,23 +49,42 @@
       var page = document.getElementById('page-chat-room');
       chat = !!(page && page.classList.contains('active'));
     } catch (_) {}
+
     var color = chat ? '#0d0f10' : '#e9f7ed';
 
-    var meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'theme-color';
-      document.head.appendChild(meta);
+    /* Safari tab/theme hint */
+    var theme = document.querySelector('meta[name="theme-color"]');
+    if (!theme) {
+      theme = document.createElement('meta');
+      theme.name = 'theme-color';
+      document.head.appendChild(theme);
     }
-    meta.setAttribute('content', color);
+    theme.setAttribute('content', color);
+
+    /* iOS standalone/PWA status bar:
+       "default" paints an opaque status-bar background and does not reliably
+       react to runtime theme-color. black-translucent makes it transparent so
+       the actual page/root background can show through. */
+    var apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (!apple) {
+      apple = document.createElement('meta');
+      apple.name = 'apple-mobile-web-app-status-bar-style';
+      document.head.appendChild(apple);
+    }
+    apple.setAttribute('content', 'black-translucent');
 
     try {
+      document.documentElement.classList.toggle('rl7-chat-active', chat);
       document.documentElement.style.setProperty('--rl7-chrome-bg', color);
       document.documentElement.style.setProperty('background-color', color, 'important');
       document.body.style.setProperty('background-color', color, 'important');
+
       var app = document.getElementById('app');
-      if (app && !chat) app.style.setProperty('background-color', '#e9f7ed', 'important');
-      if (app && chat) app.style.removeProperty('background-color');
+      if (app) {
+        /* This is behind the active full-screen chat page, so changing it is safe
+           and also gives the transparent iOS status bar the correct backdrop. */
+        app.style.setProperty('background-color', color, 'important');
+      }
     } catch (_) {}
   }
 
@@ -166,19 +185,24 @@
         text-shadow:0 1px 3px rgba(0,0,0,.88) !important;
       }
 
-      /* 心流 label: glass chip similar to chat bubbles */
+      /* 心流 label: preserve its original semantic color, but turn that
+         color into a tinted glass chip. Orange stays orange-glass, pink stays
+         pink-glass, etc. */
       #page-chat-room .chat-mood-intent,
       #page-chat-room .message-tags-row .chat-mood-intent {
-        color:#ffffff !important;
-        -webkit-text-fill-color:#ffffff !important;
-        background:rgba(30,34,36,.42) !important;
-        border:1px solid rgba(255,255,255,.26) !important;
+        /* Do NOT override color / -webkit-text-fill-color here. */
+        background:color-mix(in srgb, currentColor 16%, rgba(28,31,33,.48)) !important;
+        border:1px solid color-mix(in srgb, currentColor 42%, rgba(255,255,255,.20)) !important;
         border-radius:12px !important;
         padding:5px 10px !important;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 3px 10px rgba(0,0,0,.16) !important;
-        -webkit-backdrop-filter:blur(14px) saturate(130%) !important;
-        backdrop-filter:blur(14px) saturate(130%) !important;
-        text-shadow:0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.70) !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.18),
+          0 3px 10px rgba(0,0,0,.18) !important;
+        -webkit-backdrop-filter:blur(14px) saturate(135%) !important;
+        backdrop-filter:blur(14px) saturate(135%) !important;
+        text-shadow:
+          0 1px 2px rgba(0,0,0,.92),
+          0 0 4px rgba(0,0,0,.62) !important;
       }
 
       /* chat bottom "+" panel: glass background + readable labels */
@@ -771,6 +795,20 @@
      ========================================================= */
   function installViewport(){
     if(window.__rl7v3viewport)return;window.__rl7v3viewport=true;
+
+    /* Only observe the chat page's own class, not the whole DOM. */
+    try {
+      var chatPageForChrome = document.getElementById('page-chat-room');
+      if (chatPageForChrome && !chatPageForChrome.__rl7ChromeObserver) {
+        chatPageForChrome.__rl7ChromeObserver = new MutationObserver(function(){
+          syncChromeColor();
+        });
+        chatPageForChrome.__rl7ChromeObserver.observe(chatPageForChrome, {
+          attributes:true,
+          attributeFilter:['class']
+        });
+      }
+    } catch (_) {}
     if(window.visualViewport){
       visualViewport.addEventListener('resize',syncViewport,{passive:true});
       visualViewport.addEventListener('scroll',syncViewport,{passive:true});
