@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v19
+/* RL7 HARD FIX v20
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix19';
+  var VERSION = '20260915-hardfix20';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -161,6 +161,31 @@
         font-size:22px !important;
       }
 
+
+      /* v20 — HOME bottom nav only:
+         keep the 8 home apps where they are; move only the 4-button index row
+         visually lower and keep it above normal page content but below chat. */
+      #app.phone-frame > .bottom-nav {
+        bottom:0 !important;
+        padding-top:6px !important;
+        padding-bottom:6px !important;
+        z-index:209 !important; /* chat fullscreen is 210 */
+        background-color:transparent !important;
+        background-image:none !important;
+        backdrop-filter:none !important;
+        -webkit-backdrop-filter:none !important;
+        pointer-events:none !important;
+      }
+      #app.phone-frame > .bottom-nav .nav-item {
+        pointer-events:auto !important;
+      }
+
+      /* While chat is open, the global home index bar must never participate. */
+      html.rl7-chat-pinned #app.phone-frame > .bottom-nav {
+        visibility:hidden !important;
+        pointer-events:none !important;
+      }
+
       /* chat bottom "+" panel: glass background + readable labels */
       #chat-panel-area.open-plus,
       #plus-panel,
@@ -307,6 +332,39 @@
     try { window.scrollTo(0,0); } catch(_){}
     try { document.documentElement.scrollTop=0; document.body.scrollTop=0; } catch(_){}
   }
+
+  function keyboardOpenNow() {
+    try {
+      var vv = window.visualViewport;
+      var ih = window.innerHeight || document.documentElement.clientHeight || 0;
+      var vh = vv && vv.height ? vv.height : ih;
+      var diff = Math.max(0, ih - vh);
+      var kind = (vv && vv.type) || '';
+      return kind === 'virtual-keyboard' || (ih > 0 && diff >= 120 && diff / ih >= 0.15);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function pinChatRootToTop() {
+    /* The chat itself is already full-height. The remaining "one-row gap"
+       happens when iOS leaves the document/root viewport slightly scrolled.
+       Reset ONLY root scrolling; never touch chat height / --chat-h / --kbd. */
+    if (!chatActive() || keyboardOpenNow()) return;
+    try { window.scrollTo(0,0); } catch(_){}
+    try {
+      if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    } catch(_){}
+  }
+
+  function settleChatRoot() {
+    [0,40,100,220,450].forEach(function(ms){
+      setTimeout(pinChatRootToTop, ms);
+    });
+  }
+
   function syncViewport() {
     /* v19: layout intentionally left to the original app.js.
        This helper only re-applies visual input styling. */
@@ -744,16 +802,41 @@
      LISTENERS / BOOT
      ========================================================= */
   function installViewport(){
-    if(window.__rl7v19VisualListeners)return;
-    window.__rl7v19VisualListeners=true;
+    if(window.__rl7v20PinInstalled)return;
+    window.__rl7v20PinInstalled=true;
 
-    /* No visualViewport geometry listeners here.
-       Original js/app.js owns --chat-h / --kbd / --chat-offset. */
-    window.addEventListener('pageshow',stagedRecovery,{passive:true});
-    window.addEventListener('focus',function(){ hardInputWhite(); },{passive:true});
+    var chatPage = document.getElementById('page-chat-room');
+    if (chatPage) {
+      var obs = new MutationObserver(function(){
+        var active = chatPage.classList.contains('active');
+        document.documentElement.classList.toggle('rl7-chat-pinned', active);
+        if (active) settleChatRoot();
+      });
+      obs.observe(chatPage, {attributes:true, attributeFilter:['class']});
+      document.documentElement.classList.toggle('rl7-chat-pinned', chatPage.classList.contains('active'));
+    }
+
+    /* Initial chat entry / return from background / keyboard close. */
+    window.addEventListener('pageshow',function(){ settleChatRoot(); hardInputWhite(); },{passive:true});
     document.addEventListener('visibilitychange',function(){
-      if(!document.hidden) stagedRecovery();
+      if(!document.hidden) settleChatRoot();
     });
+
+    document.addEventListener('focusout',function(e){
+      if(e.target && e.target.id==='chat-input') {
+        setTimeout(settleChatRoot, 40);
+        setTimeout(settleChatRoot, 220);
+      }
+    },true);
+
+    /* If iOS leaves the root at a non-zero scroll after navigation, correct it,
+       but never fight the software keyboard while it is open. */
+    window.addEventListener('scroll',function(){
+      if(chatActive() && !keyboardOpenNow() && window.scrollY !== 0) {
+        pinChatRootToTop();
+      }
+    },{passive:true});
+
     document.addEventListener('focusin',function(e){
       if(e.target && e.target.id==='chat-input') hardInputWhite();
     },true);
@@ -770,7 +853,7 @@
     document.documentElement.classList.remove('rl7-chat-active','rl7-keyboard-open');
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
+    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();settleChatRoot();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
