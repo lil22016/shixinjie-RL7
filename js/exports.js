@@ -23,12 +23,13 @@ window.renderShop = renderShop;
 window.renderShopCart = renderShopCart;
 window.ShopApp = ShopApp;
 
-/* RL7 patch loader */
+/* RL7 hard-fix loader v2 */
 (function () {
-  if (document.getElementById('rl7-patches-loader')) return;
+  var old = document.getElementById('rl7-patches-loader');
+  if (old) old.remove();
   var s = document.createElement('script');
   s.id = 'rl7-patches-loader';
-  s.src = 'js/rl7-patches.js?v=20260915b';
+  s.src = 'js/rl7-patches.js?v=20260915-hardfix2';
   s.async = false;
   document.head.appendChild(s);
 })();

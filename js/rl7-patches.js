@@ -1,467 +1,616 @@
-/* RL7 compatibility + feature patches
- * - iOS viewport/keyboard recovery
- * - high-contrast chat input text
- * - stronger background keepalive integration
- * - shared poke vocabulary
- * - customizable whereabouts activities
- * - two-mode decision entry
+/* RL7 HARD FIX v2
+ * Direct runtime overrides for:
+ * 1) iOS keyboard/background viewport jump
+ * 2) chat input text visibility
+ * 3) one-line shared poke vocabulary
+ *
+ * This file intentionally overrides the original behavior AFTER all project scripts load.
  */
 (function () {
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var PAT_KEY = 'rl7_shared_pat_vocab_v1';
-  var WA_KEY  = 'rl7_whereabout_activities_v1';
+  var V = '20260915-hardfix2';
 
+  function toast(s) {
+    try { if (window.Core && Core.toast) Core.toast(s); } catch (_) {}
+  }
   function esc(s) {
-    if (window.Core && Core.escapeHtml) return Core.escapeHtml(String(s == null ? '' : s));
+    try { if (window.Core && Core.escapeHtml) return Core.escapeHtml(String(s == null ? '' : s)); } catch (_) {}
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
     });
   }
 
-  /* ---------- CSS / iOS viewport ---------- */
-  function injectStyle() {
-    if (document.getElementById('rl7-patch-style')) return;
+  /* =========================================================
+     1. iOS viewport hard fix
+     ========================================================= */
+  function installHardCSS() {
+    var old = document.getElementById('rl7-hardfix2-style');
+    if (old) old.remove();
+
     var st = document.createElement('style');
-    st.id = 'rl7-patch-style';
+    st.id = 'rl7-hardfix2-style';
     st.textContent = `
-      html, body {
+      html.rl7-ios-fix,
+      html.rl7-ios-fix body {
         width:100% !important;
-        height:100% !important;
-        min-height:100% !important;
+        max-width:100% !important;
         overflow:hidden !important;
-        overscroll-behavior:none;
+        overscroll-behavior:none !important;
       }
-      body {
+
+      html.rl7-ios-fix body {
         position:fixed !important;
         inset:0 !important;
         margin:0 !important;
+        padding:0 !important;
       }
-      #app.phone-frame {
-        height:var(--rl7-app-height, 100dvh) !important;
-        min-height:var(--rl7-app-height, 100dvh) !important;
-        max-height:var(--rl7-app-height, 100dvh) !important;
+
+      html.rl7-ios-fix #app.phone-frame {
+        position:fixed !important;
+        inset:0 !important;
+        width:100% !important;
+        height:100% !important;
+        min-height:0 !important;
+        max-height:none !important;
         overflow:hidden !important;
         transform:none !important;
-        top:0 !important;
+        translate:none !important;
+        margin:0 !important;
       }
-      #page-chat-room {
-        height:var(--rl7-app-height, 100dvh) !important;
-        max-height:var(--rl7-app-height, 100dvh) !important;
+
+      html.rl7-ios-fix #page-chat-room.page-fullscreen,
+      html.rl7-ios-fix #page-chat-room.page-fullscreen.active {
+        position:fixed !important;
+        top:0 !important;
+        right:0 !important;
+        bottom:auto !important;
+        left:0 !important;
+        width:100% !important;
+        height:var(--rl7-chat-height, 100dvh) !important;
+        min-height:0 !important;
+        max-height:none !important;
+        transform:none !important;
+        translate:none !important;
+        margin:0 !important;
+        padding-top:0 !important;
+        padding-bottom:0 !important;
         overflow:hidden !important;
       }
-      #chat-input,
-      #page-chat-room input,
-      #page-chat-room textarea,
-      .chat-input,
-      .chat-input input,
-      .chat-input textarea,
-      .message-input {
-        color:#fff !important;
-        -webkit-text-fill-color:#fff !important;
-        caret-color:#fff !important;
+
+      /* IMPORTANT: direct target for the actual textarea/input used by this site */
+      html.rl7-ios-fix #chat-input,
+      html.rl7-ios-fix .chat-input-bar #chat-input,
+      html.rl7-ios-fix .chat-input-bar textarea#chat-input,
+      html.rl7-ios-fix .chat-input-bar input#chat-input {
+        color:#ffffff !important;
+        -webkit-text-fill-color:#ffffff !important;
+        caret-color:#ffffff !important;
+        opacity:1 !important;
         font-size:16px !important;
+        text-shadow:0 1px 2px rgba(0,0,0,.20) !important;
       }
-      #chat-input::placeholder,
-      #page-chat-room input::placeholder,
-      #page-chat-room textarea::placeholder,
-      .message-input::placeholder {
+
+      html.rl7-ios-fix #chat-input::placeholder,
+      html.rl7-ios-fix .chat-input-bar textarea#chat-input::placeholder,
+      html.rl7-ios-fix .chat-input-bar input#chat-input::placeholder {
         color:rgba(255,255,255,.62) !important;
         -webkit-text-fill-color:rgba(255,255,255,.62) !important;
+        opacity:1 !important;
       }
-      .rl7-sheet {
-        position:fixed; inset:0; z-index:99999;
+
+      /* prevent WebKit focus zoom */
+      html.rl7-ios-fix input,
+      html.rl7-ios-fix textarea,
+      html.rl7-ios-fix select {
+        font-size:16px;
+      }
+
+      /* one-line poke card display */
+      .rl7-pat-single {
+        display:flex !important;
+        align-items:center !important;
+        min-height:44px;
+        padding:0 4px;
+      }
+      .rl7-pat-single .rl7-pat-text {
+        font-size:1rem;
+        color:var(--text-dark,#26342f);
+        word-break:break-word;
+      }
+
+      .rl7-pat-sheet {
+        position:fixed; inset:0; z-index:100000;
         display:flex; align-items:flex-end; justify-content:center;
+        padding:14px;
         background:rgba(0,0,0,.28);
-        padding:16px;
       }
-      .rl7-sheet-card {
-        width:min(520px,100%); max-height:78dvh; overflow:auto;
-        border-radius:24px; padding:18px;
-        background:rgba(245,255,249,.96);
-        color:#24352f;
-        box-shadow:0 18px 60px rgba(0,0,0,.22);
-        -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px);
+      .rl7-pat-sheet-card {
+        width:min(520px,100%);
+        max-height:75dvh;
+        overflow:auto;
+        box-sizing:border-box;
+        border-radius:24px;
+        padding:18px;
+        background:rgba(245,255,249,.97);
+        color:#25362f;
+        box-shadow:0 18px 60px rgba(0,0,0,.24);
+        -webkit-backdrop-filter:blur(20px);
+        backdrop-filter:blur(20px);
       }
-      .rl7-sheet-title {font-size:18px;font-weight:700;margin-bottom:12px}
-      .rl7-sheet-sub {font-size:12px;opacity:.65;margin:-6px 0 12px}
-      .rl7-choice-grid {display:grid;grid-template-columns:1fr 1fr;gap:10px}
-      .rl7-choice {
-        border:0;border-radius:18px;padding:16px 12px;
-        background:rgba(255,255,255,.78);color:#24352f;
-        font-size:14px;font-weight:650;
+      .rl7-pat-title { font-weight:700; font-size:18px; margin-bottom:4px; }
+      .rl7-pat-sub { font-size:12px; opacity:.62; margin-bottom:12px; }
+      .rl7-pat-grid { display:flex; flex-wrap:wrap; gap:8px; }
+      .rl7-pat-chip {
+        border:0; border-radius:999px; padding:9px 12px;
+        background:rgba(68,119,93,.12); color:#315543;
+        font:inherit; font-size:13px;
       }
-      .rl7-list {display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
-      .rl7-chip {
-        border:0;border-radius:999px;padding:8px 12px;
-        background:rgba(74,130,103,.12);color:#365749;font-size:13px;
+      .rl7-pat-editor {
+        width:100%; min-height:190px; resize:vertical; box-sizing:border-box;
+        border:1px solid rgba(40,80,60,.16); border-radius:14px;
+        background:rgba(255,255,255,.85); color:#26342f !important;
+        -webkit-text-fill-color:#26342f !important;
+        padding:12px; font:inherit; font-size:16px !important; outline:none;
       }
-      .rl7-textarea, .rl7-input {
-        width:100%;box-sizing:border-box;border:1px solid rgba(50,90,70,.16);
-        border-radius:14px;padding:12px;background:rgba(255,255,255,.78);
-        color:#24352f !important;-webkit-text-fill-color:#24352f !important;
-        font:inherit;outline:none;
+      .rl7-pat-actions { display:flex; gap:10px; margin-top:14px; }
+      .rl7-pat-actions button {
+        flex:1; border:0; border-radius:14px; padding:12px; font-weight:650;
       }
-      .rl7-textarea {min-height:150px;resize:vertical}
-      .rl7-actions {display:flex;gap:10px;margin-top:14px}
-      .rl7-actions button {
-        flex:1;border:0;border-radius:14px;padding:12px;font-weight:650;
-      }
-      .rl7-secondary {background:rgba(80,100,90,.10);color:#365749}
-      .rl7-primary {background:#83c8a8;color:#14372a}
-      .rl7-mini-link {
-        border:0;background:transparent;color:#477a65;font-size:12px;
-        text-decoration:underline;padding:4px 0 8px;
+      .rl7-pat-cancel { background:rgba(80,100,90,.10); color:#365749; }
+      .rl7-pat-save { background:#8bcdb0; color:#15392b; }
+      .rl7-pat-manage {
+        border:0; background:transparent; color:#487b66;
+        text-decoration:underline; padding:0 0 12px; font-size:12px;
       }
     `;
     document.head.appendChild(st);
+    document.documentElement.classList.add('rl7-ios-fix');
   }
 
-  var keyboardOpen = false;
-  var baselineHeight = 0;
+  function hardSetInputColor() {
+    var input = document.getElementById('chat-input');
+    if (!input) return;
+    input.style.setProperty('color', '#ffffff', 'important');
+    input.style.setProperty('-webkit-text-fill-color', '#ffffff', 'important');
+    input.style.setProperty('caret-color', '#ffffff', 'important');
+    input.style.setProperty('font-size', '16px', 'important');
+    input.style.setProperty('opacity', '1', 'important');
+  }
 
-  function updateViewport(force) {
-    var vv = window.visualViewport;
-    var h = vv ? vv.height : window.innerHeight;
-    if (!baselineHeight || (!keyboardOpen && h > baselineHeight)) baselineHeight = h;
-    if (vv && baselineHeight) keyboardOpen = h < baselineHeight - 120;
+  var _lastGoodFullHeight = 0;
+  var _keyboardLikely = false;
+  var _viewportRAF = 0;
 
-    document.documentElement.style.setProperty('--rl7-app-height', Math.round(h) + 'px');
+  function chatIsActive() {
+    var page = document.getElementById('page-chat-room');
+    return !!(page && page.classList.contains('active'));
+  }
 
-    if (force || !keyboardOpen) {
-      try { window.scrollTo(0, 0); } catch (_) {}
-      try { document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } catch (_) {}
-      var app = document.getElementById('app');
-      if (app) {
-        app.style.transform = 'none';
-        app.style.top = '0px';
-        app.style.marginTop = '0px';
+  function resetRootScroll() {
+    try { window.scrollTo(0, 0); } catch (_) {}
+    try { document.documentElement.scrollTop = 0; } catch (_) {}
+    try { document.body.scrollTop = 0; } catch (_) {}
+  }
+
+  function syncViewport(force) {
+    if (_viewportRAF) cancelAnimationFrame(_viewportRAF);
+    _viewportRAF = requestAnimationFrame(function () {
+      _viewportRAF = 0;
+
+      var vv = window.visualViewport;
+      var innerH = window.innerHeight || document.documentElement.clientHeight || 0;
+      var vvH = vv && vv.height ? vv.height : innerH;
+
+      if (!_lastGoodFullHeight || (!_keyboardLikely && vvH > _lastGoodFullHeight)) {
+        _lastGoodFullHeight = vvH;
       }
-    }
-  }
 
-  function scheduleViewportRecovery() {
-    [0, 80, 220, 500, 1000].forEach(function(ms){
-      setTimeout(function(){ updateViewport(true); }, ms);
+      var diff = _lastGoodFullHeight ? (_lastGoodFullHeight - vvH) : 0;
+      _keyboardLikely = diff > 120;
+
+      /* Never use visualViewport.offsetTop here.
+         The original project adds it to .page-fullscreen top, which is the source
+         of the visible "page shoots upward/downward" behavior on iOS. */
+      document.documentElement.style.setProperty('--chat-offset', '0px', 'important');
+      document.documentElement.style.setProperty('--kbd', '0px', 'important');
+
+      if (chatIsActive()) {
+        var h = vvH > 0 ? Math.round(vvH) : Math.round(innerH);
+        document.documentElement.style.setProperty('--rl7-chat-height', h + 'px', 'important');
+
+        var page = document.getElementById('page-chat-room');
+        if (page) {
+          page.style.setProperty('top', '0px', 'important');
+          page.style.setProperty('left', '0px', 'important');
+          page.style.setProperty('right', '0px', 'important');
+          page.style.setProperty('height', h + 'px', 'important');
+          page.style.setProperty('transform', 'none', 'important');
+          page.style.setProperty('translate', 'none', 'important');
+        }
+
+        resetRootScroll();
+      }
+
+      hardSetInputColor();
     });
   }
 
-  /* ---------- background keepalive ---------- */
-  var keeper = null;
-  var keepScriptLoading = false;
+  function stagedRecovery() {
+    [0, 30, 80, 160, 320, 650, 1100].forEach(function (ms) {
+      setTimeout(function () {
+        syncViewport(true);
+        hardSetInputColor();
+      }, ms);
+    });
+  }
 
-  function otherAudioPlaying() {
+  function installViewportListeners() {
+    if (window.__rl7ViewportFix2Installed) return;
+    window.__rl7ViewportFix2Installed = true;
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewport, {passive:true});
+      window.visualViewport.addEventListener('scroll', syncViewport, {passive:true});
+    }
+    window.addEventListener('resize', syncViewport, {passive:true});
+    window.addEventListener('orientationchange', stagedRecovery, {passive:true});
+    window.addEventListener('pageshow', stagedRecovery, {passive:true});
+    window.addEventListener('focus', stagedRecovery, {passive:true});
+
+    document.addEventListener('focusin', function (e) {
+      if (e.target && e.target.id === 'chat-input') {
+        hardSetInputColor();
+        syncViewport(true);
+        setTimeout(syncViewport, 60);
+        setTimeout(syncViewport, 180);
+        setTimeout(syncViewport, 400);
+      }
+    }, true);
+
+    document.addEventListener('focusout', function (e) {
+      if (e.target && e.target.id === 'chat-input') {
+        stagedRecovery();
+      }
+    }, true);
+
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) stagedRecovery();
+    });
+
+    /* Catch any original code that rewrites the input style later. */
+    var mo = new MutationObserver(function () {
+      hardSetInputColor();
+      if (chatIsActive()) syncViewport(false);
+    });
+    mo.observe(document.documentElement, {
+      subtree:true, childList:true,
+      attributes:true, attributeFilter:['style','class']
+    });
+
+    setInterval(hardSetInputColor, 1000);
+  }
+
+  /* =========================================================
+     2. One-line shared poke vocabulary
+     ========================================================= */
+  function splitLegacyPat(text) {
+    text = String(text == null ? '' : text).trim();
+    if (!text) return '';
+
     try {
-      var els = document.querySelectorAll('audio,video');
-      for (var i=0;i<els.length;i++) {
-        var el = els[i];
-        if (!el.paused && !el.ended && el.readyState >= 2) return true;
+      if (typeof window._splitPatTemplate === 'function') {
+        var parts = window._splitPatTemplate(text);
+        if (parts) {
+          var a = String(parts.a || '').trim();
+          var b = String(parts.b || '').trim();
+          if (a) return a;
+          if (b) return b;
+        }
       }
     } catch (_) {}
-    return false;
+
+    /* Common old storage format fallbacks. */
+    text = text
+      .replace(/^[（(]?\s*对方\s*[）)]?\s*[:：]?\s*/i, '')
+      .replace(/[（(]?\s*我方\s*[）)]?\s*[:：]?\s*.*$/i, '')
+      .trim();
+    return text;
   }
 
-  function ensureKeepAliveLib(cb) {
-    if (window.createBackgroundKeepAlive) { cb(); return; }
-    if (keepScriptLoading) {
-      setTimeout(function(){ ensureKeepAliveLib(cb); }, 150);
-      return;
-    }
-    keepScriptLoading = true;
-    var s = document.createElement('script');
-    s.src = 'js/background-keepalive.js?v=rl7-20260915b';
-    s.onload = function(){ keepScriptLoading=false; cb(); };
-    s.onerror = function(){ keepScriptLoading=false; };
-    document.head.appendChild(s);
+  function patPhrase(p) {
+    if (!p) return '';
+    if (p.phrase && String(p.phrase).trim()) return String(p.phrase).trim();
+    if (p.a && String(p.a).trim()) return String(p.a).trim();
+    if (p.b && String(p.b).trim()) return String(p.b).trim();
+    return splitLegacyPat(p.text);
   }
 
-  function getKeeper() {
-    if (keeper || !window.createBackgroundKeepAlive) return keeper;
-    keeper = window.createBackgroundKeepAlive({
-      title: 'Background keepalive',
-      artist: '拾心界',
-      manageMediaSession: true,
-      isOtherAudioPlaying: otherAudioPlaying
-    });
-    return keeper;
+  function getPats() {
+    try { return (Storage.getPats && Storage.getPats()) || []; } catch (_) { return []; }
   }
 
-  window.startKeepAliveAudio = function () {
-    ensureKeepAliveLib(function(){
-      var k = getKeeper();
-      if (k) k.enable();
-    });
-  };
-  window.stopKeepAliveAudio = function () {
-    if (keeper) keeper.disable();
-  };
-
-  function reviveKeepAlive() {
+  function setPats(list) {
     try {
-      var box = document.querySelector('input[type="checkbox"][data-setting="backgroundKeepAlive"], #setting-backgroundKeepAlive, #backgroundKeepAlive');
-      if (box && box.checked) window.startKeepAliveAudio();
-      else if (keeper && keeper.enabled) keeper.resume();
+      if (Storage.setPats) Storage.setPats(list);
+      else localStorage.setItem('pats', JSON.stringify(list));
     } catch (_) {}
   }
 
-  /* ---------- shared poke vocabulary ---------- */
-  var defaultPats = [
-    'pokes your cheek',
-    'boops your nose',
-    'ruffles your hair',
-    'tugs your sleeve',
-    'leans against you',
-    'bumps your shoulder',
-    'steals a quick kiss',
-    'squeezes your hand'
-  ];
+  function myName() {
+    try {
+      var p = Storage.getMyProfile();
+      return (p && p.nickname) ? p.nickname : '我';
+    } catch (_) { return '我'; }
+  }
 
-  function loadPatVocab() {
+  function partnerName() {
     try {
-      var raw = JSON.parse(localStorage.getItem(PAT_KEY) || 'null');
-      if (Array.isArray(raw) && raw.length) return raw;
+      if (typeof window._getCurrentPartnerName === 'function') {
+        var n = window._getCurrentPartnerName();
+        if (n) return n;
+      }
     } catch (_) {}
-    return defaultPats.slice();
-  }
-  function savePatVocab(v) {
-    var seen = {};
-    v = v.map(function(x){return String(x||'').trim();}).filter(function(x){
-      if (!x || seen[x]) return false; seen[x]=1; return true;
-    });
-    localStorage.setItem(PAT_KEY, JSON.stringify(v));
-    return v;
-  }
-  function currentPartnerName() {
-    try { if (typeof _getCurrentPartnerName === 'function') return _getCurrentPartnerName() || '对方'; } catch (_) {}
     try {
-      var id = document.getElementById('page-chat-room').dataset.chatId;
-      var p = (Storage.getPartnerProfiles()||[]).find(function(x){return x.id===id;});
-      if (p) return p.nickname || '对方';
+      var page = document.getElementById('page-chat-room');
+      var id = page && page.dataset ? page.dataset.chatId : '';
+      var ps = Storage.getPartnerProfiles ? Storage.getPartnerProfiles() : [];
+      for (var i=0;i<ps.length;i++) if (ps[i].id === id) return ps[i].nickname || '对方';
     } catch (_) {}
     return '对方';
   }
-  function currentSelfName() {
-    try { var p = Storage.getMyProfile(); return (p && p.nickname) || '我方'; } catch (_) { return '我方'; }
+
+  function currentChatId() {
+    try {
+      if (typeof window._currentChatId === 'function') return window._currentChatId() || '';
+    } catch (_) {}
+    var page = document.getElementById('page-chat-room');
+    return page && page.dataset ? (page.dataset.chatId || '') : '';
   }
-  function closeSheet() {
-    var x = document.getElementById('rl7-sheet'); if (x) x.remove();
-  }
-  function showSheet(html) {
-    closeSheet();
-    var d=document.createElement('div'); d.id='rl7-sheet'; d.className='rl7-sheet';
-    d.innerHTML='<div class="rl7-sheet-card" onclick="event.stopPropagation()">'+html+'</div>';
-    d.onclick=closeSheet; document.body.appendChild(d); return d;
-  }
-  function sendPatPhrase(mode, phrase) {
-    var chatId = '';
-    try { chatId = _currentChatId(); } catch (_) {
-      var pg=document.getElementById('page-chat-room'); chatId=pg&&pg.dataset?pg.dataset.chatId:'';
-    }
-    if (!chatId) { if (window.Core) Core.toast('请先进入聊天'); return; }
-    var actor = mode === 'other' ? currentPartnerName() : currentSelfName();
+
+  function sendPatMessage(mode, phrase) {
+    phrase = String(phrase || '').trim();
+    if (!phrase) { toast('拍一拍内容不能为空'); return; }
+
+    var chatId = currentChatId();
+    if (!chatId) { toast('请先进入聊天'); return; }
+
+    var actor = mode === 'other' ? partnerName() : myName();
     var finalText = '(' + actor + ') ' + phrase;
+
     try {
       var messages = Storage.getMessages(chatId) || [];
       messages.push({
-        id: Date.now(), type: mode === 'other' ? 'other':'self',
-        text: finalText, time: Date.now(), msgType:'pat', isPat:true
+        id: Date.now(),
+        type: mode === 'other' ? 'other' : 'self',
+        text: finalText,
+        time: Date.now(),
+        msgType: 'pat',
+        isPat: true
       });
       Storage.setMessages(chatId, messages);
-      if (typeof updateLastMsg === 'function') updateLastMsg(chatId, finalText);
-      if (typeof renderChatMessages === 'function') renderChatMessages(chatId);
-      if (window.App && App.playSound) App.playSound(mode === 'other' ? 'receive' : 'send');
+      if (typeof window.updateLastMsg === 'function') updateLastMsg(chatId, finalText);
+      if (typeof window.renderChatMessages === 'function') renderChatMessages(chatId);
+      try {
+        if (window.App && App.playSound) App.playSound(mode === 'other' ? 'receive' : 'send');
+      } catch (_) {}
     } catch (e) {
-      console.error('[RL7 pat]',e);
+      console.error('[RL7 hardfix pat]', e);
+      toast('发送失败');
     }
-    closeSheet();
-  }
-  function openPatManager(mode) {
-    var vocab = loadPatVocab();
-    showSheet(
-      '<div class="rl7-sheet-title">拍一拍词库</div>'+
-      '<div class="rl7-sheet-sub">两边共享同一个词库；一行一个。发送时自动在前面插入当前角色/我的名字。</div>'+
-      '<textarea id="rl7-pat-editor" class="rl7-textarea">'+esc(vocab.join('\n'))+'</textarea>'+
-      '<div class="rl7-actions"><button class="rl7-secondary" onclick="RL7.openPatPanel(\''+mode+'\')">返回</button>'+
-      '<button class="rl7-primary" id="rl7-save-pats">保存</button></div>'
-    );
-    document.getElementById('rl7-save-pats').onclick=function(){
-      var arr=document.getElementById('rl7-pat-editor').value.split(/\r?\n/);
-      savePatVocab(arr);
-      if (window.Core) Core.toast('拍一拍词库已保存');
-      RL7.openPatPanel(mode);
-    };
-  }
-  RL7.openPatPanel = function(mode) {
-    mode = mode === 'other' ? 'other' : 'self';
-    var vocab=loadPatVocab();
-    var chips=vocab.map(function(x){
-      return '<button class="rl7-chip" data-pat="'+encodeURIComponent(x)+'">'+esc(x)+'</button>';
-    }).join('');
-    var who = mode==='other' ? currentPartnerName() : currentSelfName();
-    var sheet=showSheet(
-      '<div class="rl7-sheet-title">'+esc(who)+' · 拍一拍</div>'+
-      '<div class="rl7-sheet-sub">选择一句；会发送成 ('+esc(who)+') + 词条。</div>'+
-      '<button class="rl7-mini-link" id="rl7-manage-pats">批量编辑词库</button>'+
-      '<div class="rl7-list">'+chips+'</div>'+
-      '<div class="rl7-actions"><button class="rl7-secondary" onclick="document.getElementById(\'rl7-sheet\').remove()">取消</button></div>'
-    );
-    sheet.querySelectorAll('[data-pat]').forEach(function(b){
-      b.onclick=function(){ sendPatPhrase(mode, decodeURIComponent(b.getAttribute('data-pat'))); };
-    });
-    document.getElementById('rl7-manage-pats').onclick=function(){ openPatManager(mode); };
-  };
-  window.openPatPanel = RL7.openPatPanel;
-
-  /* Best-effort: when entering the old pat list page, add a prominent shared-vocab manager button. */
-  function decoratePatPages() {
-    document.querySelectorAll('.pat-parts').forEach(function(parts){
-      var item=parts.closest('.card-list-item');
-      if (!item || item.dataset.rl7PatDecorated) return;
-      item.dataset.rl7PatDecorated='1';
-      var texts=parts.querySelectorAll('.pat-part-text');
-      var phrase='';
-      if (texts.length) phrase=(texts[texts.length-1].textContent||texts[0].textContent||'').trim();
-      if (phrase) {
-        parts.innerHTML='<div class="pat-part"><span class="pat-part-text">'+esc(phrase)+'</span></div>';
-      }
-    });
   }
 
-  /* ---------- customizable whereabouts ---------- */
-  function loadWA() {
-    try {
-      var v=JSON.parse(localStorage.getItem(WA_KEY)||'null');
-      if (Array.isArray(v) && v.length) return v;
-    } catch (_) {}
-    return ['reading','working','studying','at the TVA','causing trouble','planning something',
-            'having coffee','walking','listening to music','resting','out','busy'];
+  function closePatSheet() {
+    var el = document.getElementById('rl7-pat-sheet');
+    if (el) el.remove();
   }
-  function applyWA() {
-    try { window.WHEREABOUT_ACTIVITIES = loadWA(); WHEREABOUT_ACTIVITIES = window.WHEREABOUT_ACTIVITIES; } catch (_) {}
-  }
-  function openWAManager() {
-    var list=loadWA();
-    showSheet(
-      '<div class="rl7-sheet-title">自定义行踪活动</div>'+
-      '<div class="rl7-sheet-sub">一行一个。以后添加行踪时，这些会成为快捷选项；地点和行动仍可自由输入。</div>'+
-      '<textarea id="rl7-wa-editor" class="rl7-textarea">'+esc(list.join('\n'))+'</textarea>'+
-      '<div class="rl7-actions"><button class="rl7-secondary" onclick="document.getElementById(\'rl7-sheet\').remove()">取消</button>'+
-      '<button class="rl7-primary" id="rl7-save-wa">保存</button></div>'
-    );
-    document.getElementById('rl7-save-wa').onclick=function(){
-      var arr=document.getElementById('rl7-wa-editor').value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
-      localStorage.setItem(WA_KEY, JSON.stringify(arr));
-      applyWA(); closeSheet();
-      if (window.Core) Core.toast('行踪活动已更新');
-    };
-  }
-  RL7.openWAManager=openWAManager;
 
-  var originalAddWhereabout = null;
-  function hookWhereabouts() {
-    applyWA();
-    if (!originalAddWhereabout && typeof window.addWhereabout === 'function') {
-      originalAddWhereabout = window.addWhereabout;
-      window.addWhereabout = function(preset) {
-        applyWA();
-        var r = originalAddWhereabout(preset);
-        setTimeout(function(){
-          var ov=document.querySelector('.form-modal-overlay');
-          if (!ov || ov.querySelector('.rl7-wa-manage')) return;
-          var label=ov.querySelector('.whereabout-activity-label');
-          if (label) {
-            var btn=document.createElement('button');
-            btn.type='button'; btn.className='rl7-mini-link rl7-wa-manage';
-            btn.textContent='编辑我的快捷活动';
-            btn.onclick=function(e){e.preventDefault();e.stopPropagation();openWAManager();};
-            label.parentNode.insertBefore(btn,label.nextSibling);
-          }
-        },0);
-        return r;
+  function showPatSheet(inner) {
+    closePatSheet();
+    var el = document.createElement('div');
+    el.id = 'rl7-pat-sheet';
+    el.className = 'rl7-pat-sheet';
+    el.innerHTML = '<div class="rl7-pat-sheet-card" onclick="event.stopPropagation()">' + inner + '</div>';
+    el.onclick = closePatSheet;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function saveSharedPhrases(lines) {
+    var phrases = lines.map(function(x){return String(x||'').trim();}).filter(Boolean);
+    var seen = {};
+    phrases = phrases.filter(function(x){ if (seen[x]) return false; seen[x]=1; return true; });
+
+    var old = getPats();
+    var group = (window._patCurrentGroup || '基础');
+    var next = phrases.map(function(phrase, i) {
+      var existing = old[i] || {};
+      return {
+        id: existing.id || ('pat_' + Date.now() + '_' + i),
+        group: existing.group || group,
+        phrase: phrase,
+        a: phrase,
+        b: '',
+        text: phrase
       };
-    }
+    });
+
+    setPats(next);
+    return next;
   }
 
-  /* ---------- decision: choose mode first ---------- */
-  var originalOpenDecision = null;
-  function openHelpMeDecide() {
-    showSheet(
-      '<div class="rl7-sheet-title">让 TA 帮我抉择</div>'+
-      '<div class="rl7-sheet-sub">这里不需要先写选项。把纠结的事情直接发给 TA，让聊天回复来帮你判断。</div>'+
-      '<textarea id="rl7-decide-question" class="rl7-textarea" style="min-height:110px" placeholder="比如：I can’t decide whether I should go out tonight or stay home..."></textarea>'+
-      '<div class="rl7-actions"><button class="rl7-secondary" onclick="document.getElementById(\'rl7-sheet\').remove()">取消</button>'+
-      '<button class="rl7-primary" id="rl7-decide-send">发送</button></div>'
+  function openPatEditor(mode) {
+    var pats = getPats();
+    var phrases = pats.map(patPhrase).filter(Boolean);
+    var el = showPatSheet(
+      '<div class="rl7-pat-title">拍一拍词库</div>' +
+      '<div class="rl7-pat-sub">两边共享同一个词库，一行一个。系统只会在前面自动加名字，不会再在后面加“我/我方”。</div>' +
+      '<textarea id="rl7-pat-editor" class="rl7-pat-editor">' + esc(phrases.join('\n')) + '</textarea>' +
+      '<div class="rl7-pat-actions">' +
+      '<button class="rl7-pat-cancel" id="rl7-pat-back">返回</button>' +
+      '<button class="rl7-pat-save" id="rl7-pat-save">保存</button>' +
+      '</div>'
     );
-    document.getElementById('rl7-decide-send').onclick=function(){
-      var q=(document.getElementById('rl7-decide-question').value||'').trim();
-      if(!q){if(window.Core)Core.toast('先写下你在纠结什么');return;}
-      closeSheet();
-      var inp=document.getElementById('chat-input');
-      if (inp) {
-        inp.value='Help me decide: '+q;
-        inp.dispatchEvent(new Event('input',{bubbles:true}));
-        if (typeof window.sendMessage === 'function') { window.sendMessage(); return; }
-      }
-      if (typeof window.sendChatMessage === 'function') { window.sendChatMessage('Help me decide: '+q); return; }
-      if (window.Core) Core.toast('已填入输入框，请点击发送');
+    el.querySelector('#rl7-pat-back').onclick = function(){ window.openPatPanel(mode); };
+    el.querySelector('#rl7-pat-save').onclick = function(){
+      saveSharedPhrases(el.querySelector('#rl7-pat-editor').value.split(/\r?\n/));
+      toast('拍一拍词库已保存');
+      window.openPatPanel(mode);
+      decoratePatCards();
     };
   }
-  function openDecisionChooser() {
-    try { if (typeof closePlusMenu==='function') closePlusMenu(); } catch (_) {}
-    showSheet(
-      '<div class="rl7-sheet-title">抉择</div>'+
-      '<div class="rl7-choice-grid">'+
-      '<button class="rl7-choice" id="rl7-help-me">让 TA 帮我抉择<br><small>只描述问题，让 TA 给意见</small></button>'+
-      '<button class="rl7-choice" id="rl7-quiz-them">给 TA 出选择题<br><small>你给选项，让 TA 选一个</small></button>'+
-      '</div>'+
-      '<div class="rl7-actions"><button class="rl7-secondary" onclick="document.getElementById(\'rl7-sheet\').remove()">取消</button></div>'
-    );
-    document.getElementById('rl7-help-me').onclick=function(){openHelpMeDecide();};
-    document.getElementById('rl7-quiz-them').onclick=function(){closeSheet(); if(originalOpenDecision) originalOpenDecision();};
-  }
-  RL7.openDecisionChooser=openDecisionChooser;
 
-  function hookDecision() {
-    if (!originalOpenDecision && typeof window.openDecisionPanel === 'function') {
-      originalOpenDecision = window.openDecisionPanel;
-      window.openDecisionPanel = openDecisionChooser;
+  function hardOpenPatPanel(mode) {
+    mode = mode === 'other' ? 'other' : 'self';
+    var phrases = getPats().map(patPhrase).filter(Boolean);
+
+    if (!phrases.length) {
+      phrases = ['pokes your cheek','boops your nose','ruffles your hair','tugs your sleeve'];
     }
-    document.querySelectorAll('.plus-menu-item').forEach(function(item){
-      var sp=item.querySelector('span');
-      if (sp && sp.textContent.trim()==='帮我抉择') sp.textContent='抉择';
+
+    var actor = mode === 'other' ? partnerName() : myName();
+    var chips = phrases.map(function(p, i){
+      return '<button class="rl7-pat-chip" data-i="'+i+'">'+esc(p)+'</button>';
+    }).join('');
+
+    var el = showPatSheet(
+      '<div class="rl7-pat-title">' + esc(actor) + ' · 拍一拍</div>' +
+      '<div class="rl7-pat-sub">发送格式：(' + esc(actor) + ') + 词条</div>' +
+      '<button class="rl7-pat-manage" id="rl7-pat-manage">批量编辑词库</button>' +
+      '<div class="rl7-pat-grid">' + chips + '</div>' +
+      '<div class="rl7-pat-actions"><button class="rl7-pat-cancel" id="rl7-pat-cancel">取消</button></div>'
+    );
+
+    el.querySelector('#rl7-pat-manage').onclick = function(){ openPatEditor(mode); };
+    el.querySelector('#rl7-pat-cancel').onclick = closePatSheet;
+    el.querySelectorAll('.rl7-pat-chip').forEach(function(btn){
+      btn.onclick = function(){
+        var p = phrases[parseInt(btn.getAttribute('data-i'),10)];
+        sendPatMessage(mode, p);
+        closePatSheet();
+      };
     });
   }
 
-  /* ---------- startup / observers ---------- */
+  function hardSendPat(mode) {
+    /* Compatibility with old inline button:
+       take first non-empty old field but NEVER concatenate the second field. */
+    var a = document.getElementById('pat-custom-a');
+    var b = document.getElementById('pat-custom-b');
+    var phrase = (a && a.value ? a.value : '').trim() ||
+                 (b && b.value ? b.value : '').trim();
+    if (!phrase) {
+      var pats = getPats();
+      if (pats.length) phrase = patPhrase(pats[Math.floor(Math.random()*pats.length)]);
+    }
+    sendPatMessage(mode === 'other' ? 'other' : 'self', phrase);
+    try { if (typeof window.closePatPanel === 'function') window.closePatPanel(); } catch (_) {}
+  }
+
+  function hardSendPatFromWordcard(id) {
+    var pats = getPats();
+    var target = null;
+    for (var i=0;i<pats.length;i++) {
+      if (String(pats[i].id) === String(id)) { target = pats[i]; break; }
+    }
+    if (!target) return;
+    sendPatMessage('other', patPhrase(target));
+  }
+
+  function hardAutoPatReply(chatId) {
+    var pats = getPats();
+    if (!pats.length) return;
+    var phrase = patPhrase(pats[Math.floor(Math.random()*pats.length)]);
+    if (!phrase) return;
+
+    /* Ensure current room ID is available to shared sender. */
+    var page = document.getElementById('page-chat-room');
+    var old = page && page.dataset ? page.dataset.chatId : '';
+    if (page && page.dataset && chatId) page.dataset.chatId = chatId;
+    sendPatMessage('other', phrase);
+    if (page && page.dataset && old && old !== chatId) page.dataset.chatId = old;
+  }
+
+  function decoratePatCards() {
+    try {
+      var pats = getPats();
+      var byId = {};
+      pats.forEach(function(p){ byId[String(p.id)] = patPhrase(p); });
+
+      document.querySelectorAll('.card-list-item[data-pat-id]').forEach(function(item){
+        var id = item.getAttribute('data-pat-id');
+        var phrase = byId[id] || '';
+        if (!phrase) return;
+        var parts = item.querySelector('.pat-parts');
+        if (!parts) return;
+        parts.className = 'pat-parts rl7-pat-single';
+        parts.innerHTML = '<span class="rl7-pat-text">' + esc(phrase) + '</span>';
+      });
+    } catch (_) {}
+  }
+
+  function installPatOverrides() {
+    /* These names are used by inline onclick and by chat code. */
+    window.openPatPanel = hardOpenPatPanel;
+    window.sendPat = hardSendPat;
+    window.sendPatFromWordcard = hardSendPatFromWordcard;
+    window._sendPatAutoReply = hardAutoPatReply;
+
+    /* Wrap renderers so the card UI itself becomes one-line too. */
+    if (!window.__rl7PatRenderWrapped) {
+      window.__rl7PatRenderWrapped = true;
+
+      if (typeof window.renderWordCardPatGroup === 'function') {
+        var oldGroup = window.renderWordCardPatGroup;
+        window.renderWordCardPatGroup = function(){
+          var r = oldGroup.apply(this, arguments);
+          setTimeout(decoratePatCards, 0);
+          return r;
+        };
+      }
+      if (typeof window.renderWordCardPat === 'function') {
+        var oldPat = window.renderWordCardPat;
+        window.renderWordCardPat = function(){
+          var r = oldPat.apply(this, arguments);
+          setTimeout(decoratePatCards, 0);
+          return r;
+        };
+      }
+    }
+
+    decoratePatCards();
+  }
+
+  /* =========================================================
+     boot AFTER all normal scripts have had a chance to export globals
+     ========================================================= */
   function boot() {
-    injectStyle();
-    updateViewport(true);
-    hookWhereabouts();
-    hookDecision();
-    decoratePatPages();
-    reviveKeepAlive();
+    installHardCSS();
+    hardSetInputColor();
+    installViewportListeners();
+    installPatOverrides();
+    stagedRecovery();
 
-    var mo=new MutationObserver(function(){
-      hookDecision();
-      decoratePatPages();
-      hookWhereabouts();
+    /* Re-assert overrides because init.js and other scripts may export the old
+       function references after this dynamic file starts loading. */
+    [50, 150, 400, 900, 1800, 3500].forEach(function(ms){
+      setTimeout(function(){
+        installHardCSS();
+        hardSetInputColor();
+        installPatOverrides();
+        syncViewport(true);
+      }, ms);
     });
-    mo.observe(document.body,{childList:true,subtree:true});
   }
 
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function(){updateViewport(false);});
-    window.visualViewport.addEventListener('scroll', function(){updateViewport(false);});
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot, 0); });
+  } else {
+    setTimeout(boot, 0);
   }
-  window.addEventListener('resize', function(){updateViewport(false);});
-  window.addEventListener('orientationchange', scheduleViewportRecovery);
-  window.addEventListener('pageshow', function(){scheduleViewportRecovery();reviveKeepAlive();});
-  window.addEventListener('focus', function(){scheduleViewportRecovery();reviveKeepAlive();});
-  document.addEventListener('visibilitychange', function(){
-    if (!document.hidden) { scheduleViewportRecovery();reviveKeepAlive(); }
-  });
 
-  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
-  else boot();
+  RL7.version = V;
+  RL7.hardFixViewport = stagedRecovery;
+  RL7.decoratePatCards = decoratePatCards;
 })();

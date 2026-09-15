@@ -79,8 +79,6 @@
       document.addEventListener('visibilitychange',heal);
       global.addEventListener('pageshow',heal);
       global.addEventListener('focus',heal);
-      global.addEventListener('online',heal);
-      global.addEventListener('orientationchange',heal);
       heartbeat=setInterval(() => {
         if (busy()) { if (audio && !audio.paused) audio.pause(); return; }
         if (audio.paused) schedule();
@@ -93,10 +91,7 @@
       clearTimeout(retry); retry=null; clearInterval(heartbeat); heartbeat=null;
       recoveries.forEach(clearTimeout); recoveries.clear();
       document.removeEventListener('visibilitychange',heal);
-      global.removeEventListener('pageshow',heal);
-      global.removeEventListener('focus',heal);
-      global.removeEventListener('online',heal);
-      global.removeEventListener('orientationchange',heal);
+      global.removeEventListener('pageshow',heal); global.removeEventListener('focus',heal);
       if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); audio=null; }
       if (source) URL.revokeObjectURL(source); source='';
       try { if (ownedMetadata && navigator.mediaSession && navigator.mediaSession.metadata===ownedMetadata) {
