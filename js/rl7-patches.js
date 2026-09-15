@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v11
+/* RL7 HARD FIX v12
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix11';
+  var VERSION = '20260915-hardfix12';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -266,6 +266,49 @@
         background:transparent !important;
       }
 
+
+      /* v12: v11 made #app tall enough to reach the physical bottom, but that
+         extra top-safe-area height also became part of normal flex/page layout.
+         Correct only the content that was displaced by that extra height. */
+
+      /* Home: the widget grid uses margin-top:auto, so the extra app height
+         pushed it down underneath the fixed bottom navigation. Add equivalent
+         internal bottom space so the grid returns to its original position
+         while the navigation itself remains flush with the physical bottom. */
+      #page-home #app-swipe-wrapper.home-widgets-wrap {
+        padding-bottom:calc(32px + env(safe-area-inset-top, 0px)) !important;
+      }
+
+      /* Chat: keep the page physically full-height, but reserve the v11
+         compensation INSIDE the page only when the keyboard is closed.
+         This keeps the input row visible instead of placing most of it below
+         the screen. box-sizing is critical so padding does not grow the page. */
+      html.rl7-ios-fix #page-chat-room.page-fullscreen,
+      html.rl7-ios-fix #page-chat-room.page-fullscreen.active {
+        box-sizing:border-box !important;
+        padding-bottom:var(--rl7-bottom-comp, 0px) !important;
+      }
+
+      html.rl7-ios-fix #page-chat-room .chat-input-zone {
+        position:relative !important;
+        z-index:20 !important;
+      }
+
+      /* Extend the same glass behind the compensation area so there is no
+         black/foreign-color strip under the input controls. */
+      html.rl7-ios-fix #page-chat-room .chat-input-zone::after {
+        content:"";
+        position:absolute;
+        left:0;
+        right:0;
+        top:100%;
+        height:var(--rl7-bottom-comp, 0px);
+        background:rgba(24,28,29,.42);
+        -webkit-backdrop-filter:blur(18px) saturate(125%);
+        backdrop-filter:blur(18px) saturate(125%);
+        pointer-events:none;
+      }
+
       /* Real iOS safe-area strip.
          Unlike the old 56px overlay, this occupies ONLY env(safe-area-inset-top).
          Chat content is padded below it, so it never covers title/messages. */
@@ -511,6 +554,17 @@
          Do not treat status bar / Home-indicator differences as a keyboard. */
       keyboard=(kind==='virtual-keyboard') || (diff>=120 && ih>0 && diff/ih>=0.15);
 
+      /* v12: the extra app height is needed for Home Screen edge-to-edge
+         rendering, but it must not shove chat controls below the screen.
+         Reserve it only as internal bottom compensation while keyboard is
+         closed; remove it while the software keyboard is open. */
+      var layoutSafeTop = safeTopPx();
+      document.documentElement.style.setProperty(
+        '--rl7-bottom-comp',
+        keyboard ? '0px' : (layoutSafeTop + 'px'),
+        'important'
+      );
+
       document.documentElement.style.setProperty('--chat-offset','0px','important');
       document.documentElement.style.setProperty('--kbd',keyboard?Math.max(0,Math.round(diff))+'px':'0px','important');
 
@@ -520,7 +574,7 @@
              page actually reaches the bottom of the screen.
            - keyboard open: use visualViewport.height so the editor stays above
              the keyboard. */
-        var safeTop = safeTopPx();
+        var safeTop = layoutSafeTop;
         /* black-translucent standalone quirk:
            innerHeight / visualViewport.height may exclude the top safe-area
            even though the fixed page begins at y=0. Without adding safeTop,
