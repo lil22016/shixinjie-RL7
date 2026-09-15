@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v22
+/* RL7 HARD FIX v23
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix22';
+  var VERSION = '20260915-hardfix23';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -162,77 +162,18 @@
       }
 
 
-      /* v22 — stable bottom + safe chat header */
+      /* v23 — ORIGINAL SITE LAYOUT RESTORED
+         Do not override chat page geometry, bottom nav geometry, safe-bottom,
+         html/body viewport, or keyboard viewport behavior. */
 
-      /* CHAT, keyboard closed:
-         Fill the fixed viewport by edges instead of trusting the first
-         visualViewport height sample. This removes the initial bottom gap. */
-      html.rl7-ios-fix:not(.rl7-kbd-open) #page-chat-room.page-fullscreen,
-      html.rl7-ios-fix:not(.rl7-kbd-open) #page-chat-room.page-fullscreen.active {
-        top:0 !important;
-        bottom:0 !important;
-        height:auto !important;
-      }
-
-      /* CHAT, keyboard open:
-         Return geometry ownership to the site's original keyboard variables. */
-      html.rl7-kbd-open #page-chat-room.page-fullscreen,
-      html.rl7-kbd-open #page-chat-room.page-fullscreen.active {
-        top:var(--chat-offset, 0px) !important;
-        bottom:auto !important;
-        height:var(--chat-h, calc(100% - var(--kbd, 0px))) !important;
-      }
-
-      /* Only the topbar is pushed below iPhone system UI.
-         The rest of the chat page is NOT shifted. */
+      /* Only move the CHAT HEADER below iPhone system UI.
+         Because chat remains the original flex column, messages shrink naturally
+         and the input stays at the original site's bottom position. */
       #page-chat-room .chat-room-topbar {
         height:calc(48px + env(safe-area-inset-top, 0px)) !important;
         min-height:calc(48px + env(safe-area-inset-top, 0px)) !important;
         padding-top:env(safe-area-inset-top, 0px) !important;
         box-sizing:border-box !important;
-      }
-
-      /* HOME NAV:
-         Keep it in its original #app hierarchy; make the bar itself cover the
-         bottom safe-area so no separate green strip can sit over it. */
-      #app.phone-frame > .bottom-nav {
-        position:fixed !important;
-        left:0 !important;
-        right:0 !important;
-        top:auto !important;
-        bottom:0 !important;
-        margin:0 auto !important;
-        z-index:100000 !important;
-        padding-top:6px !important;
-        padding-left:18px !important;
-        padding-right:18px !important;
-        padding-bottom:max(6px, env(safe-area-inset-bottom, 0px)) !important;
-        transform:none !important;
-        translate:none !important;
-        background-color:var(--bg-main, #e9f7ed) !important;
-        background-image:var(--bg-gradient, none) !important;
-        background-attachment:fixed !important;
-        background-repeat:no-repeat !important;
-        background-size:cover !important;
-        backdrop-filter:none !important;
-        -webkit-backdrop-filter:none !important;
-        pointer-events:auto !important;
-      }
-
-      /* The home nav must never cover the fullscreen chat. */
-      html.rl7-chat-pinned #app.phone-frame > .bottom-nav {
-        visibility:hidden !important;
-        pointer-events:none !important;
-      }
-
-      /* Make the root/safe-area background the same visual surface as home. */
-      html.rl7-ios-fix:not(.rl7-chat-pinned),
-      html.rl7-ios-fix:not(.rl7-chat-pinned) body {
-        background-color:var(--bg-main, #e9f7ed) !important;
-        background-image:var(--bg-gradient, none) !important;
-        background-attachment:fixed !important;
-        background-repeat:no-repeat !important;
-        background-size:cover !important;
       }
 
       /* chat bottom "+" panel: glass background + readable labels */
@@ -382,49 +323,18 @@
     try { document.documentElement.scrollTop=0; document.body.scrollTop=0; } catch(_){}
   }
 
-  function keyboardOpenNow() {
-    try {
-      var vv = window.visualViewport;
-      var ih = window.innerHeight || document.documentElement.clientHeight || 0;
-      var vh = vv && vv.height ? vv.height : ih;
-      var diff = Math.max(0, ih - vh);
-      var kind = (vv && vv.type) || '';
-      return kind === 'virtual-keyboard' || (ih > 0 && diff >= 120 && diff / ih >= 0.15);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function syncKeyboardClass() {
-    document.documentElement.classList.toggle('rl7-kbd-open', keyboardOpenNow());
-  }
-
-  function restoreHomeNav() {
-    /* v21 moved the nav to <body>. Undo that if a hot reload happens before a
-       full page restart; on a normal reload this is already a no-op. */
-    try {
-      var nav = document.querySelector('.bottom-nav');
-      var app = document.getElementById('app');
-      if (!nav || !app) return;
-      nav.classList.remove('rl7-nav-portal');
-      if (nav.parentElement !== app) app.appendChild(nav);
-    } catch (_) {}
-  }
-
-  function syncChatStateClass() {
-    document.documentElement.classList.toggle('rl7-chat-pinned', chatActive());
-    syncKeyboardClass();
-  }
-
   function syncViewport() {
-    /* v19: layout intentionally left to the original app.js.
-       This helper only re-applies visual input styling. */
     hardInputWhite();
   }
 
   function releaseLayoutControl() {
     try {
+      document.documentElement.classList.remove(
+        'rl7-kbd-open','rl7-chat-pinned','rl7-ios-pwa','rl7-vv-fit'
+      );
       document.documentElement.style.removeProperty('--rl7-chat-height');
+      document.documentElement.style.removeProperty('--rl7-bottom-comp');
+
       var page = document.getElementById('page-chat-room');
       if (page) {
         ['top','right','bottom','left','width','height','min-height','max-height',
@@ -432,6 +342,19 @@
          'box-sizing','position'].forEach(function(prop){
           page.style.removeProperty(prop);
         });
+      }
+
+      var nav = document.querySelector('.bottom-nav');
+      var app = document.getElementById('app');
+      if (nav) {
+        nav.classList.remove('rl7-nav-portal');
+        ['top','right','bottom','left','width','height','min-height','max-height',
+         'transform','translate','margin','padding-top','padding-bottom',
+         'z-index','position','visibility','pointer-events','background',
+         'background-color','background-image'].forEach(function(prop){
+          nav.style.removeProperty(prop);
+        });
+        if (app && nav.parentElement !== app) app.appendChild(nav);
       }
     } catch (_) {}
   }
@@ -853,57 +776,31 @@
      LISTENERS / BOOT
      ========================================================= */
   function installViewport(){
-    if(window.__rl7v22Installed)return;
-    window.__rl7v22Installed=true;
+    if(window.__rl7v23Installed)return;
+    window.__rl7v23Installed=true;
 
-    restoreHomeNav();
-    syncChatStateClass();
-
-    var chatPage = document.getElementById('page-chat-room');
-    if (chatPage) {
-      var obs = new MutationObserver(function(){
-        syncChatStateClass();
-      });
-      obs.observe(chatPage, {attributes:true, attributeFilter:['class']});
-    }
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', syncKeyboardClass, {passive:true});
-      window.visualViewport.addEventListener('scroll', syncKeyboardClass, {passive:true});
-    }
-    window.addEventListener('resize', syncKeyboardClass, {passive:true});
+    releaseLayoutControl();
+    hardInputWhite();
 
     window.addEventListener('pageshow',function(){
-      restoreHomeNav();
-      syncChatStateClass();
+      releaseLayoutControl();
       hardInputWhite();
+      syncChromeColor();
     },{passive:true});
 
     document.addEventListener('visibilitychange',function(){
       if(!document.hidden) {
-        restoreHomeNav();
-        syncChatStateClass();
+        releaseLayoutControl();
+        hardInputWhite();
+        syncChromeColor();
       }
     });
 
     document.addEventListener('focusin',function(e){
-      if(e.target && e.target.id==='chat-input') {
-        hardInputWhite();
-        setTimeout(syncKeyboardClass,20);
-        setTimeout(syncKeyboardClass,120);
-      }
-    },true);
-
-    document.addEventListener('focusout',function(e){
-      if(e.target && e.target.id==='chat-input') {
-        setTimeout(syncKeyboardClass,80);
-        setTimeout(syncKeyboardClass,260);
-      }
+      if(e.target && e.target.id==='chat-input') hardInputWhite();
     },true);
 
     setInterval(function(){
-      restoreHomeNav();
-      syncChatStateClass();
       hardInputWhite();
       syncChromeColor();
     },1500);
@@ -915,7 +812,7 @@
     document.documentElement.classList.remove('rl7-chat-active','rl7-keyboard-open');
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();restoreHomeNav();syncChatStateClass();
+    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
