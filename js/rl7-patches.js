@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v17
+/* RL7 HARD FIX v18
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix17';
+  var VERSION = '20260915-hardfix18';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -40,128 +40,35 @@
     return arr;
   }
 
-
-  function ensureStatusStrip() {
-    var strip = document.getElementById('rl7-status-strip');
-    if (!strip) {
-      strip = document.createElement('div');
-      strip.id = 'rl7-status-strip';
-      strip.setAttribute('aria-hidden','true');
-      document.body.appendChild(strip);
-    }
-    return strip;
-  }
-
-  function _usableBgImage(el) {
-    if (!el) return null;
-    try {
-      var cs = getComputedStyle(el);
-      var img = cs.backgroundImage;
-      if (img && img !== 'none') {
-        return {
-          image: img,
-          size: cs.backgroundSize || 'cover',
-          position: cs.backgroundPosition || 'center top',
-          repeat: cs.backgroundRepeat || 'no-repeat',
-          color: cs.backgroundColor || 'transparent'
-        };
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  function syncStatusStrip() {
-    var strip = ensureStatusStrip();
-    var page = document.getElementById('page-chat-room');
-    var chat = !!(page && page.classList.contains('active'));
-
-    if (!chat) {
-      /* Normal pages: use the same site theme gradient/background. */
-      strip.style.backgroundImage = 'var(--bg-gradient, none)';
-      strip.style.backgroundColor = 'var(--bg-main, #e9f7ed)';
-      strip.style.backgroundSize = 'cover';
-      strip.style.backgroundPosition = 'center top';
-      return;
-    }
-
-    /* Chat page: copy the nearest actual chat wallpaper/background instead of
-       guessing one fixed black/green color. This lets the safe-area visually
-       continue whatever is immediately below it. */
-    var candidates = [
-      page,
-      document.getElementById('chat-messages'),
-      page && page.querySelector('.chat-messages'),
-      page && page.querySelector('.chat-room-bg'),
-      page && page.querySelector('.chat-background'),
-      page && page.querySelector('[style*="background-image"]')
-    ];
-    var bg = null;
-    for (var i=0;i<candidates.length;i++) {
-      bg = _usableBgImage(candidates[i]);
-      if (bg) break;
-    }
-
-    if (bg) {
-      strip.style.backgroundImage = bg.image;
-      strip.style.backgroundColor = bg.color && bg.color !== 'rgba(0, 0, 0, 0)' ? bg.color : '#0d0f10';
-      strip.style.backgroundSize = bg.size === 'auto' ? 'cover' : bg.size;
-      strip.style.backgroundPosition = bg.position || 'center top';
-      strip.style.backgroundRepeat = bg.repeat || 'no-repeat';
-    } else {
-      /* If the wallpaper is stored on a pseudo/background layer we cannot
-         directly clone, sample the visual direction with a dark glass cap. */
-      strip.style.backgroundImage = 'none';
-      strip.style.backgroundColor = '#0d0f10';
-    }
-  }
-
   /* =========================================================
      STATUS BAR / SAFE AREA COLOR
      ========================================================= */
   function syncChromeColor() {
     var chat = false;
+    var apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (apple) apple.setAttribute('content', 'default');
     try {
       var page = document.getElementById('page-chat-room');
       chat = !!(page && page.classList.contains('active'));
     } catch (_) {}
-
     var color = chat ? '#0d0f10' : '#e9f7ed';
 
-    /* Safari tab/theme hint */
-    var theme = document.querySelector('meta[name="theme-color"]');
-    if (!theme) {
-      theme = document.createElement('meta');
-      theme.name = 'theme-color';
-      document.head.appendChild(theme);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
     }
-    theme.setAttribute('content', color);
-
-    /* iOS standalone/PWA status bar:
-       "default" paints an opaque status-bar background and does not reliably
-       react to runtime theme-color. black-translucent makes it transparent so
-       the actual page/root background can show through. */
-    var apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (!apple) {
-      apple = document.createElement('meta');
-      apple.name = 'apple-mobile-web-app-status-bar-style';
-      document.head.appendChild(apple);
-    }
-    apple.setAttribute('content', 'black-translucent');
+    meta.setAttribute('content', color);
 
     try {
-      document.documentElement.classList.toggle('rl7-chat-active', chat);
       document.documentElement.style.setProperty('--rl7-chrome-bg', color);
-
-      /* Do not paint html/body/#app black in chat.
-         If iOS reports a shorter visualViewport for a moment, a black root
-         becomes visible as a giant bottom band. Keep the real document on the
-         normal site background; only the status strip mirrors the chat. */
-      document.documentElement.style.setProperty('background-color', '#e9f7ed', 'important');
-      document.body.style.setProperty('background-color', '#e9f7ed', 'important');
+      document.documentElement.style.setProperty('background-color', color, 'important');
+      document.body.style.setProperty('background-color', color, 'important');
       var app = document.getElementById('app');
-      if (app) app.style.setProperty('background-color', '#e9f7ed', 'important');
+      if (app && !chat) app.style.setProperty('background-color', '#e9f7ed', 'important');
+      if (app && chat) app.style.removeProperty('background-color');
     } catch (_) {}
-    syncStatusStrip();
   }
 
   /* =========================================================
@@ -196,12 +103,9 @@
       }
       html.rl7-ios-fix #app.phone-frame {
         position:fixed !important;
-        top:0 !important;
-        right:0 !important;
-        bottom:0 !important;
-        left:0 !important;
+        inset:0 !important;
         width:100% !important;
-        height:auto !important;
+        height:100% !important;
         min-height:0 !important;
         max-height:none !important;
         overflow:hidden !important;
@@ -244,71 +148,6 @@
 
 
 
-
-
-      /* Real iOS safe-area strip.
-         Unlike the old 56px overlay, this occupies ONLY env(safe-area-inset-top).
-         Chat content is padded below it, so it never covers title/messages. */
-      #rl7-status-strip {
-        position:fixed !important;
-        top:0 !important;
-        left:0 !important;
-        right:0 !important;
-        height:env(safe-area-inset-top, 0px) !important;
-        min-height:env(safe-area-inset-top, 0px) !important;
-        pointer-events:none !important;
-        z-index:100001 !important;
-        background-color:#e9f7ed;
-        background-repeat:no-repeat !important;
-        background-size:cover !important;
-        background-position:center top !important;
-      }
-
-      /* Keep the full chat page at full viewport height.
-         Reserve the iPhone top/bottom safe areas inside the fixed header/input
-         instead of shortening the whole page. This prevents the whole layout
-         from appearing shifted upward and prevents a large exposed strip below. */
-      html.rl7-ios-fix #page-chat-room .chat-room-topbar {
-        box-sizing:border-box !important;
-        height:calc(48px + env(safe-area-inset-top, 0px)) !important;
-        padding-top:env(safe-area-inset-top, 0px) !important;
-        flex-shrink:0 !important;
-      }
-      html.rl7-ios-fix #page-chat-room .chat-input-zone {
-        padding-bottom:env(safe-area-inset-bottom, 0px) !important;
-        box-sizing:border-box !important;
-        flex:0 0 auto !important;
-        flex-shrink:0 !important;
-        min-height:calc(56px + env(safe-area-inset-bottom, 0px)) !important;
-        display:block !important;
-        visibility:visible !important;
-        opacity:1 !important;
-        transform:none !important;
-        background:rgba(238,247,242,.40) !important;
-        -webkit-backdrop-filter:blur(18px) saturate(125%) !important;
-        backdrop-filter:blur(18px) saturate(125%) !important;
-        border-top:1px solid rgba(255,255,255,.16) !important;
-      }
-      html.rl7-ios-fix #page-chat-room .chat-input-bar {
-        background:transparent !important;
-        -webkit-backdrop-filter:none !important;
-        backdrop-filter:none !important;
-      }
-
-
-      /* Home app grid: after removing the accidental extra app height the
-         grid returns upward naturally. Give it a small additional lift and
-         make the app icons only slightly larger. */
-      #page-home #app-swipe-wrapper.home-widgets-wrap {
-        padding-bottom:46px !important;
-      }
-      #page-home .home-feature-icon {
-        width:44px !important;
-        height:44px !important;
-        border-radius:16px !important;
-        font-size:20px !important;
-      }
-
       /* Chat topbar readability */
       #page-chat-room .chat-room-title {
         color:#ffffff !important;
@@ -329,24 +168,34 @@
         text-shadow:0 1px 3px rgba(0,0,0,.88) !important;
       }
 
-      /* 心流 label: preserve its original semantic color, but turn that
-         color into a tinted glass chip. Orange stays orange-glass, pink stays
-         pink-glass, etc. */
+      /* 心流：保留原本 semantic color，只增加同色系毛玻璃 */
       #page-chat-room .chat-mood-intent,
       #page-chat-room .message-tags-row .chat-mood-intent {
-        /* Do NOT override color / -webkit-text-fill-color here. */
-        background:color-mix(in srgb, currentColor 16%, rgba(28,31,33,.48)) !important;
+        background:color-mix(in srgb, currentColor 16%, rgba(28,31,33,.38)) !important;
         border:1px solid color-mix(in srgb, currentColor 42%, rgba(255,255,255,.20)) !important;
         border-radius:12px !important;
         padding:5px 10px !important;
         box-shadow:
           inset 0 1px 0 rgba(255,255,255,.18),
-          0 3px 10px rgba(0,0,0,.18) !important;
+          0 3px 10px rgba(0,0,0,.16) !important;
         -webkit-backdrop-filter:blur(14px) saturate(135%) !important;
         backdrop-filter:blur(14px) saturate(135%) !important;
-        text-shadow:
-          0 1px 2px rgba(0,0,0,.92),
-          0 0 4px rgba(0,0,0,.62) !important;
+        text-shadow:0 1px 2px rgba(0,0,0,.78), 0 0 4px rgba(0,0,0,.46) !important;
+      }
+
+
+      /* 只放大图标，不改变首页网格和底栏的位置 */
+      #page-home .home-feature-icon {
+        width:48px !important;
+        height:48px !important;
+        border-radius:17px !important;
+        font-size:22px !important;
+      }
+      #app.phone-frame > .bottom-nav .nav-icon-circle {
+        width:48px !important;
+        height:48px !important;
+        border-radius:17px !important;
+        font-size:22px !important;
       }
 
       /* chat bottom "+" panel: glass background + readable labels */
@@ -405,115 +254,6 @@
         -webkit-backdrop-filter:blur(18px) saturate(125%) !important;
         backdrop-filter:blur(18px) saturate(125%) !important;
         border-top:1px solid rgba(255,255,255,.08) !important;
-      }
-
-
-      /* =========================================================
-         v17 — STABLE BOTTOM CONTROLS (SAFE FALLBACK)
-         =========================================================
-         iOS Home-Screen PWAs expose a visual area below the web layout viewport
-         on this device. Previous attempts moved interactive controls into that
-         area with negative bottom offsets. iOS continued painting/clipping that
-         region separately, producing the horizontal layer that covered buttons.
-
-         v17 stops trying to place interactive controls inside that region.
-         Controls sit at bottom:0 of the actual web viewport, fully visible and
-         stable. This intentionally trades "physical edge contact" for reliability.
-      */
-
-      /* HOME: keep the 8 app icons exactly where they are. Only the 4-button
-         navigation is positioned here. No negative offset, no safe-top hack. */
-      html.rl7-ios-fix #app.phone-frame > .bottom-nav {
-        position:fixed !important;
-        left:0 !important;
-        right:0 !important;
-        top:auto !important;
-        bottom:0 !important;
-        margin:0 auto !important;
-        padding-top:6px !important;
-        padding-bottom:8px !important;
-        transform:none !important;
-        translate:none !important;
-        box-sizing:border-box !important;
-        z-index:190 !important;
-      }
-
-      @media (min-width: 768px) and (max-width: 1199px) {
-        html.rl7-ios-fix #app.phone-frame > .bottom-nav { max-width:836px !important; }
-      }
-      @media (min-width: 1200px) {
-        html.rl7-ios-fix #app.phone-frame > .bottom-nav { max-width:1044px !important; }
-      }
-
-      /* Never let the global nav cover a full-screen chat. */
-      html.rl7-chat-active #app.phone-frame > .bottom-nav,
-      #app.phone-frame:has(#page-chat-room.active) > .bottom-nav {
-        display:none !important;
-        visibility:hidden !important;
-        pointer-events:none !important;
-      }
-
-      /* CHAT: pin the input to the bottom of the chat viewport, not the
-         physical screen outside the viewport. When the keyboard opens the chat
-         viewport already shrinks, so bottom:0 naturally moves above the keyboard. */
-      html.rl7-ios-fix #page-chat-room .chat-input-zone {
-        position:absolute !important;
-        left:0 !important;
-        right:0 !important;
-        top:auto !important;
-        bottom:0 !important;
-        width:100% !important;
-        min-height:0 !important;
-        padding-bottom:6px !important;
-        box-sizing:border-box !important;
-        display:block !important;
-        visibility:visible !important;
-        opacity:1 !important;
-        transform:none !important;
-        translate:none !important;
-        z-index:40 !important;
-        background:rgba(238,247,242,.72) !important;
-        -webkit-backdrop-filter:blur(20px) saturate(130%) !important;
-        backdrop-filter:blur(20px) saturate(130%) !important;
-        border-top:1px solid rgba(255,255,255,.34) !important;
-      }
-
-      html.rl7-keyboard-open #page-chat-room .chat-input-zone {
-        position:absolute !important;
-        bottom:0 !important;
-        padding-bottom:0 !important;
-      }
-
-      html.rl7-ios-fix #page-chat-room .chat-input-bar {
-        background:transparent !important;
-        -webkit-backdrop-filter:none !important;
-        backdrop-filter:none !important;
-        border-top:0 !important;
-      }
-
-      /* Keep last messages visible above the pinned input. */
-      html.rl7-ios-fix #page-chat-room .chat-messages {
-        box-sizing:border-box !important;
-        padding-bottom:76px !important;
-      }
-
-      html.rl7-ios-fix #page-chat-room:has(.chat-panel-area.open-plus) .chat-messages,
-      html.rl7-ios-fix #page-chat-room:has(.chat-panel-area.open-sticker) .chat-messages {
-        padding-bottom:calc(76px + var(--chat-panel-h, 300px)) !important;
-      }
-
-      /* Keep the requested larger icons. */
-      #page-home .home-feature-icon {
-        width:48px !important;
-        height:48px !important;
-        border-radius:17px !important;
-        font-size:22px !important;
-      }
-      #app.phone-frame > .bottom-nav .nav-icon-circle {
-        width:48px !important;
-        height:48px !important;
-        border-radius:17px !important;
-        font-size:22px !important;
       }
 
       /* generic sheets */
@@ -595,72 +335,44 @@
     x.style.setProperty('opacity','1','important');
   }
 
-  var keyboard = false, raf = 0;
-
+  var lastFullH = 0, keyboard = false, raf = 0;
   function chatActive() {
     var p = document.getElementById('page-chat-room');
     return !!(p && p.classList.contains('active'));
   }
-
   function zeroScroll() {
     try { window.scrollTo(0,0); } catch(_){}
     try { document.documentElement.scrollTop=0; document.body.scrollTop=0; } catch(_){}
   }
-
   function syncViewport() {
     if (raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(function(){
       raf=0;
-
       var vv=window.visualViewport;
-      var app=document.getElementById('app');
-      var appH=0;
-      try { appH=app ? app.getBoundingClientRect().height : 0; } catch(_){}
-      if(!appH) appH=window.innerHeight||document.documentElement.clientHeight||0;
+      var ih=window.innerHeight||document.documentElement.clientHeight||0;
+      var vh=vv&&vv.height?vv.height:ih;
+      if (!lastFullH || (!keyboard && vh>lastFullH)) lastFullH=vh;
+      keyboard=(lastFullH-vh)>120;
 
-      var vvH=vv&&vv.height?vv.height:appH;
-      var diff=(appH&&vvH)?Math.max(0,appH-vvH):0;
-      var kind=(vv&&vv.type)||'';
-
-      keyboard=(kind==='virtual-keyboard') || (diff>=120 && appH>0 && diff/appH>=0.15);
-      document.documentElement.classList.toggle('rl7-keyboard-open', !!keyboard);
-
-      /* ONE geometry owner:
-         - closed keyboard: chat exactly equals the rendered #app height
-         - open keyboard: chat equals visualViewport.height
-         No safe-top additions, no artificial bottom compensation. */
-      var h=Math.round(keyboard ? vvH : appH);
-
-      document.documentElement.style.setProperty('--chat-h',h+'px','important');
-      document.documentElement.style.setProperty('--rl7-chat-height',h+'px','important');
-      document.documentElement.style.setProperty('--kbd',keyboard?Math.round(diff)+'px':'0px','important');
-
-      /* Keep the chat layer anchored at y=0. This preserves the earlier fix
-         for the iOS "whole chat shoots upward" problem. */
+      /* neutralize original offsetTop compensation */
       document.documentElement.style.setProperty('--chat-offset','0px','important');
-      document.documentElement.style.setProperty('--rl7-bottom-comp','0px','important');
+      document.documentElement.style.setProperty('--kbd','0px','important');
 
-      if(chatActive()){
-        var page=document.getElementById('page-chat-room');
-        if(page){
-          page.style.setProperty('top','0px','important');
-          page.style.setProperty('bottom','auto','important');
-          page.style.setProperty('height',h+'px','important');
-          page.style.setProperty('min-height',h+'px','important');
-          page.style.setProperty('max-height',h+'px','important');
-          page.style.setProperty('transform','none','important');
-          page.style.setProperty('translate','none','important');
-          page.style.setProperty('padding-top','0px','important');
-          page.style.setProperty('padding-bottom','0px','important');
-          page.style.setProperty('box-sizing','border-box','important');
+      if (chatActive()) {
+        var h=Math.round(vh||ih);
+        document.documentElement.style.setProperty('--rl7-chat-height',h+'px','important');
+        var p=document.getElementById('page-chat-room');
+        if(p){
+          p.style.setProperty('top','0px','important');
+          p.style.setProperty('height',h+'px','important');
+          p.style.setProperty('transform','none','important');
+          p.style.setProperty('translate','none','important');
         }
         zeroScroll();
       }
-
       hardInputWhite();
     });
   }
-
   function stagedRecovery(){
     [0,30,80,160,320,650,1100].forEach(function(ms){
       setTimeout(function(){syncViewport();hardInputWhite();syncChromeColor();},ms);
@@ -1076,36 +788,6 @@
      ========================================================= */
   function installViewport(){
     if(window.__rl7v3viewport)return;window.__rl7v3viewport=true;
-
-    /* Only observe the chat page's own class, not the whole DOM. */
-    try {
-      var chatPageForChrome = document.getElementById('page-chat-room');
-      if (chatPageForChrome && !chatPageForChrome.__rl7ChromeObserver) {
-        chatPageForChrome.__rl7ChromeObserver = new MutationObserver(function(){
-          syncChromeColor();
-          syncStatusStrip();
-        });
-        chatPageForChrome.__rl7ChromeObserver.observe(chatPageForChrome, {
-          attributes:true,
-          attributeFilter:['class']
-        });
-      }
-    } catch (_) {}
-
-    try {
-      var chatPageBg = document.getElementById('page-chat-room');
-      if (chatPageBg && !chatPageBg.__rl7StatusBgObserver) {
-        chatPageBg.__rl7StatusBgObserver = new MutationObserver(function(){
-          syncStatusStrip();
-        });
-        chatPageBg.__rl7StatusBgObserver.observe(chatPageBg, {
-          subtree:true,
-          attributes:true,
-          attributeFilter:['style','class']
-        });
-      }
-    } catch (_) {}
-
     if(window.visualViewport){
       visualViewport.addEventListener('resize',syncViewport,{passive:true});
       visualViewport.addEventListener('scroll',syncViewport,{passive:true});
@@ -1127,11 +809,12 @@
   }
 
   function boot(){
+    var staleStrip=document.getElementById('rl7-status-strip');
+    if(staleStrip) staleStrip.remove();
+    document.documentElement.classList.remove('rl7-chat-active','rl7-keyboard-open');
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    var oldStrip=document.getElementById('rl7-status-strip');
-    if(oldStrip) oldStrip.remove();
-    installCSS();ensureStatusStrip();syncChromeColor();syncStatusStrip();hardInputWhite();installViewport();installChatInputHitArea();
+    installCSS();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
