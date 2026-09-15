@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v3
+/* RL7 HARD FIX v5
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix3';
+  var VERSION = '20260915-hardfix5';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -44,12 +44,10 @@
      STATUS BAR / SAFE AREA COLOR
      ========================================================= */
   function syncChromeColor() {
+    /* Keep the status/safe-area color deterministic.
+       iOS was alternating between the old hard-coded blue and the app green
+       depending on which page/theme update ran last. */
     var color = '#e9f7ed';
-    try {
-      var cs = getComputedStyle(document.documentElement);
-      var v = (cs.getPropertyValue('--bg-main') || cs.getPropertyValue('--bg-color') || '').trim();
-      if (v && v.charAt(0) === '#') color = v;
-    } catch (_) {}
 
     var meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -61,10 +59,18 @@
 
     try {
       document.documentElement.style.setProperty('--rl7-chrome-bg', color);
-      document.documentElement.style.backgroundColor = color;
-      document.body.style.backgroundColor = color;
+      document.documentElement.style.setProperty('background-color', color, 'important');
+      document.body.style.setProperty('background-color', color, 'important');
       var app = document.getElementById('app');
-      if (app) app.style.backgroundColor = color;
+      if (app) app.style.setProperty('background-color', color, 'important');
+
+      var cap = document.getElementById('rl7-safe-top');
+      if (!cap) {
+        cap = document.createElement('div');
+        cap.id = 'rl7-safe-top';
+        document.body.appendChild(cap);
+      }
+      cap.style.background = color;
     } catch (_) {}
   }
 
@@ -79,7 +85,22 @@
     st.id = 'rl7-hardfix3-style';
     st.textContent = `
       html, body {
-        background:var(--rl7-chrome-bg, var(--bg-main, #e9f7ed)) !important;
+        background:#e9f7ed !important;
+      }
+      #rl7-safe-top {
+        position:fixed !important;
+        top:0 !important;
+        left:0 !important;
+        right:0 !important;
+        height:max(env(safe-area-inset-top, 0px), 56px) !important;
+        background:#e9f7ed !important;
+        pointer-events:none !important;
+        z-index:1 !important;
+      }
+      #app.phone-frame,
+      .page,
+      .page-fullscreen {
+        isolation:isolate;
       }
       html.rl7-ios-fix,
       html.rl7-ios-fix body {
@@ -426,13 +447,96 @@
     var map={};pats().forEach(function(p){map[String(p.id)]=patPhrase(p);});
     document.querySelectorAll('.card-list-item[data-pat-id]').forEach(function(item){
       var q=map[String(item.dataset.patId)];if(!q)return;
-      var p=item.querySelector('.pat-parts');if(!p)return;
-      p.className='pat-parts rl7-pat-single';
-      p.innerHTML='<span class="rl7-pat-text">'+esc(q)+'</span>';
+      var box=item.querySelector('.pat-parts');if(!box)return;
+      /* Important: do not rewrite innerHTML repeatedly.
+         The previous observer could rewrite -> trigger observer -> rewrite forever,
+         which is why opening “基础” could freeze the whole app. */
+      if (box.getAttribute('data-rl7-pat') === q) return;
+      box.setAttribute('data-rl7-pat', q);
+      box.className='pat-parts rl7-pat-single';
+      box.innerHTML='<span class="rl7-pat-text">'+esc(q)+'</span>';
     });
+  }
+
+  function defaultPatGroup(){
+    var ps=pats();
+    if(window._patCurrentGroup) return window._patCurrentGroup;
+    if(ps.length && ps[0].group) return ps[0].group;
+    return '基础';
+  }
+
+  function appendPatLines(lines){
+    var add=uniq(lines);
+    if(!add.length){toast('请输入至少一条拍一拍');return 0;}
+    var ps=pats().slice();
+    var existing={};
+    ps.forEach(function(x){existing[patPhrase(x)]=1;});
+    var group=defaultPatGroup();
+    var now=Date.now(), n=0;
+    add.forEach(function(q,i){
+      if(existing[q]) return;
+      ps.push({
+        id:'pat_'+now+'_'+i,
+        group:group,
+        phrase:q,
+        a:q,
+        b:'',
+        text:q
+      });
+      existing[q]=1;n++;
+    });
+    savePats(ps);
+    return n;
+  }
+
+  function openBulkAddPat(){
+    var x=sheet(
+      '<div class="rl7-title">批量添加拍一拍</div>'+
+      '<div class="rl7-sub">只需要填写对方动作。一行一个，可以一次粘贴很多条。不会再要求“我方动作”，也不会再拼接“：想你了”。</div>'+
+      '<textarea class="rl7-textarea" id="rl7-pat-add-lines" placeholder="pokes your cheek\nboops your nose\nruffles your hair"></textarea>'+
+      '<div class="rl7-actions"><button class="rl7-secondary" id="rl7-pat-add-cancel">取消</button><button class="rl7-primary" id="rl7-pat-add-save">批量添加</button></div>'
+    );
+    x.querySelector('#rl7-pat-add-cancel').onclick=closeSheet;
+    x.querySelector('#rl7-pat-add-save').onclick=function(){
+      var n=appendPatLines(x.querySelector('#rl7-pat-add-lines').value.split(/\r?\n/));
+      if(!n)return;
+      closeSheet();
+      try{ if(typeof renderWordCardPat==='function') renderWordCardPat(); }catch(_){}
+      try{ if(typeof renderWordCardPatGroup==='function' && window._patCurrentGroup) renderWordCardPatGroup(); }catch(_){}
+      setTimeout(decoratePats,20);
+      toast('已批量添加 '+n+' 条');
+    };
+  }
+
+  function openSinglePatEdit(id){
+    var ps=pats(), idx=-1;
+    for(var i=0;i<ps.length;i++) if(String(ps[i].id)===String(id)){idx=i;break;}
+    if(idx<0)return;
+    var q=patPhrase(ps[idx]);
+    var x=sheet(
+      '<div class="rl7-title">编辑拍一拍</div>'+
+      '<div class="rl7-sub">只保留一条动作文本。</div>'+
+      '<textarea class="rl7-textarea" id="rl7-pat-edit-one">'+esc(q)+'</textarea>'+
+      '<div class="rl7-actions"><button class="rl7-secondary" id="rl7-pat-edit-cancel">取消</button><button class="rl7-primary" id="rl7-pat-edit-save">保存</button></div>'
+    );
+    x.querySelector('#rl7-pat-edit-cancel').onclick=closeSheet;
+    x.querySelector('#rl7-pat-edit-save').onclick=function(){
+      var v=x.querySelector('#rl7-pat-edit-one').value.trim();
+      if(!v){toast('内容不能为空');return;}
+      ps[idx].phrase=v; ps[idx].a=v; ps[idx].b=''; ps[idx].text=v;
+      savePats(ps);closeSheet();
+      try{if(typeof renderWordCardPatGroup==='function')renderWordCardPatGroup();}catch(_){}
+      setTimeout(decoratePats,20);
+      toast('已保存');
+    };
   }
   function installPats(){
     window.openPatPanel=openPatPanelStrong;
+    /* Top-level “添加” and group-level “添加” now both use one bulk textarea.
+       No group-name field, no self-action field. */
+    window.addPatGroup=openBulkAddPat;
+    window.addPatToGroup=openBulkAddPat;
+    window.editPatItem=openSinglePatEdit;
     window.sendPat=function(mode){
       var a=document.getElementById('pat-custom-a'),b=document.getElementById('pat-custom-b');
       var q=(a&&a.value||'').trim()||(b&&b.value||'').trim();
@@ -540,6 +644,49 @@
     if(c && c.offsetParent!==null)renderPools();
   }
 
+
+  /* =========================================================
+     CHAT INPUT HIT AREA
+     ========================================================= */
+  function installChatInputHitArea(){
+    if(window.__rl7ChatInputHitAreaInstalled)return;
+    window.__rl7ChatInputHitAreaInstalled=true;
+
+    function shouldIgnore(target){
+      if(!target)return false;
+      /* Keep actual controls working normally: mic / emoji / plus / send / links / buttons. */
+      return !!(target.closest && target.closest(
+        'button, .input-btn, .send-btn, .input-btn-voice, ' +
+        '.chat-sticker-btn, .chat-plus-btn, a, [role="button"]'
+      ));
+    }
+
+    function focusEditor(e){
+      var bar=e.target && e.target.closest ? e.target.closest('.chat-input-bar') : null;
+      if(!bar || shouldIgnore(e.target))return;
+
+      var input=document.getElementById('chat-input');
+      if(!input)return;
+
+      /* Tapping anywhere in the empty/input portion of the whole bottom bar
+         should behave exactly like tapping the text field itself. */
+      try{
+        input.focus({preventScroll:true});
+      }catch(_){
+        try{input.focus();}catch(__){}
+      }
+      hardInputWhite();
+      setTimeout(function(){
+        hardInputWhite();
+        syncViewport();
+      },40);
+    }
+
+    document.addEventListener('pointerdown',focusEditor,true);
+    document.addEventListener('touchend',focusEditor,true);
+    document.addEventListener('click',focusEditor,true);
+  }
+
   /* =========================================================
      LISTENERS / BOOT
      ========================================================= */
@@ -556,16 +703,17 @@
     document.addEventListener('visibilitychange',function(){if(!document.hidden)stagedRecovery();});
     document.addEventListener('focusin',function(e){if(e.target&&e.target.id==='chat-input')stagedRecovery();},true);
 
-    var mo=new MutationObserver(function(){
-      hardInputWhite();syncChromeColor();decoratePats();
-      var c=document.getElementById('whereabout-group-list');
-      if(c && c.offsetParent!==null && !c.querySelector('.rl7-wa-wrap')) renderPools();
-    });
-    mo.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
+    /* Do NOT observe the whole DOM here.
+       v3's subtree MutationObserver could be triggered by its own poke-card
+       innerHTML rewrite and create an infinite loop on the “基础” page. */
+    setInterval(function(){
+      hardInputWhite();
+      syncChromeColor();
+    },1200);
   }
 
   function boot(){
-    installCSS();syncChromeColor();hardInputWhite();installViewport();
+    installCSS();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
@@ -577,7 +725,7 @@
 
     [50,160,400,900,1800,3500].forEach(function(ms){
       setTimeout(function(){
-        installCSS();syncChromeColor();hardInputWhite();
+        syncChromeColor();hardInputWhite();
         installPats();installWhereabouts();syncViewport();
         window.startKeepAliveAudio=startKeepAliveStrong;
         window.stopKeepAliveAudio=stopKeepAliveStrong;
@@ -590,6 +738,7 @@
 
   RL7.version=VERSION;
   RL7.keepAliveStatus=function(){return window.__rl7KeepAliveStatus||{};};
+  RL7.bulkAddPat=openBulkAddPat;
   RL7.editWhereabouts=openWhereaboutEditor;
   RL7.recoverViewport=stagedRecovery;
 })();

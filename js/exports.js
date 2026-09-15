@@ -29,7 +29,7 @@ window.ShopApp = ShopApp;
   if (old) old.remove();
   var s = document.createElement('script');
   s.id = 'rl7-patches-loader';
-  s.src = 'js/rl7-patches.js?v=20260915-hardfix3';
+  s.src = 'js/rl7-patches.js?v=20260915-hardfix5';
   s.async = false;
   document.head.appendChild(s);
 })();
