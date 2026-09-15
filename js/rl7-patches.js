@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v12
+/* RL7 HARD FIX v13
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix12';
+  var VERSION = '20260915-hardfix13';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -201,11 +201,8 @@
         bottom:0 !important;
         left:0 !important;
         width:100% !important;
-        /* In iOS standalone + black-translucent, 100dvh can exclude the
-           top safe-area while the page is still positioned at y=0. Add that
-           exact inset back so #app reaches the physical bottom edge. */
-        height:calc(100dvh + env(safe-area-inset-top, 0px)) !important;
-        min-height:calc(100dvh + env(safe-area-inset-top, 0px)) !important;
+        height:auto !important;
+        min-height:0 !important;
         max-height:none !important;
         overflow:hidden !important;
         transform:none !important;
@@ -249,66 +246,6 @@
 
 
 
-      html.rl7-ios-fix,
-      html.rl7-ios-fix body {
-        min-height:calc(100dvh + env(safe-area-inset-top, 0px)) !important;
-      }
-
-      /* Keep the chat input background visually continuous through the
-         Home-indicator safe area. Buttons remain above the indicator, but the
-         glass/background itself reaches the physical bottom edge. */
-      html.rl7-ios-fix #page-chat-room .chat-input-zone {
-        background:rgba(24,28,29,.42) !important;
-        -webkit-backdrop-filter:blur(18px) saturate(125%) !important;
-        backdrop-filter:blur(18px) saturate(125%) !important;
-      }
-      html.rl7-ios-fix #page-chat-room .chat-input-bar {
-        background:transparent !important;
-      }
-
-
-      /* v12: v11 made #app tall enough to reach the physical bottom, but that
-         extra top-safe-area height also became part of normal flex/page layout.
-         Correct only the content that was displaced by that extra height. */
-
-      /* Home: the widget grid uses margin-top:auto, so the extra app height
-         pushed it down underneath the fixed bottom navigation. Add equivalent
-         internal bottom space so the grid returns to its original position
-         while the navigation itself remains flush with the physical bottom. */
-      #page-home #app-swipe-wrapper.home-widgets-wrap {
-        padding-bottom:calc(32px + env(safe-area-inset-top, 0px)) !important;
-      }
-
-      /* Chat: keep the page physically full-height, but reserve the v11
-         compensation INSIDE the page only when the keyboard is closed.
-         This keeps the input row visible instead of placing most of it below
-         the screen. box-sizing is critical so padding does not grow the page. */
-      html.rl7-ios-fix #page-chat-room.page-fullscreen,
-      html.rl7-ios-fix #page-chat-room.page-fullscreen.active {
-        box-sizing:border-box !important;
-        padding-bottom:var(--rl7-bottom-comp, 0px) !important;
-      }
-
-      html.rl7-ios-fix #page-chat-room .chat-input-zone {
-        position:relative !important;
-        z-index:20 !important;
-      }
-
-      /* Extend the same glass behind the compensation area so there is no
-         black/foreign-color strip under the input controls. */
-      html.rl7-ios-fix #page-chat-room .chat-input-zone::after {
-        content:"";
-        position:absolute;
-        left:0;
-        right:0;
-        top:100%;
-        height:var(--rl7-bottom-comp, 0px);
-        background:rgba(24,28,29,.42);
-        -webkit-backdrop-filter:blur(18px) saturate(125%);
-        backdrop-filter:blur(18px) saturate(125%);
-        pointer-events:none;
-      }
-
       /* Real iOS safe-area strip.
          Unlike the old 56px overlay, this occupies ONLY env(safe-area-inset-top).
          Chat content is padded below it, so it never covers title/messages. */
@@ -340,7 +277,36 @@
       html.rl7-ios-fix #page-chat-room .chat-input-zone {
         padding-bottom:env(safe-area-inset-bottom, 0px) !important;
         box-sizing:border-box !important;
+        flex:0 0 auto !important;
         flex-shrink:0 !important;
+        min-height:calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+        display:block !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        transform:none !important;
+        background:rgba(238,247,242,.40) !important;
+        -webkit-backdrop-filter:blur(18px) saturate(125%) !important;
+        backdrop-filter:blur(18px) saturate(125%) !important;
+        border-top:1px solid rgba(255,255,255,.16) !important;
+      }
+      html.rl7-ios-fix #page-chat-room .chat-input-bar {
+        background:transparent !important;
+        -webkit-backdrop-filter:none !important;
+        backdrop-filter:none !important;
+      }
+
+
+      /* Home app grid: after removing the accidental extra app height the
+         grid returns upward naturally. Give it a small additional lift and
+         make the app icons only slightly larger. */
+      #page-home #app-swipe-wrapper.home-widgets-wrap {
+        padding-bottom:46px !important;
+      }
+      #page-home .home-feature-icon {
+        width:44px !important;
+        height:44px !important;
+        border-radius:16px !important;
+        font-size:20px !important;
       }
 
       /* Chat topbar readability */
@@ -520,72 +486,55 @@
     x.style.setProperty('opacity','1','important');
   }
 
-  function safeTopPx(){
-    try{
-      var strip=document.getElementById('rl7-status-strip');
-      if(strip){
-        var h=strip.getBoundingClientRect().height;
-        if(h>=0 && h<120)return Math.round(h);
-      }
-    }catch(_){}
-    return 0;
-  }
+  var keyboard = false, raf = 0;
 
-  var lastFullH = 0, keyboard = false, raf = 0;
   function chatActive() {
     var p = document.getElementById('page-chat-room');
     return !!(p && p.classList.contains('active'));
   }
+
   function zeroScroll() {
     try { window.scrollTo(0,0); } catch(_){}
     try { document.documentElement.scrollTop=0; document.body.scrollTop=0; } catch(_){}
   }
+
   function syncViewport() {
     if (raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(function(){
       raf=0;
+
       var vv=window.visualViewport;
-      var ih=window.innerHeight||document.documentElement.clientHeight||0;
-      var vh=vv&&vv.height?vv.height:ih;
-      var diff=(ih&&vh)?(ih-vh):0;
+      var app=document.getElementById('app');
+      var appH=0;
+      try { appH=app ? app.getBoundingClientRect().height : 0; } catch(_){}
+      if(!appH) appH=window.innerHeight||document.documentElement.clientHeight||0;
+
+      var vvH=vv&&vv.height?vv.height:appH;
+      var diff=(appH&&vvH)?Math.max(0,appH-vvH):0;
       var kind=(vv&&vv.type)||'';
 
-      /* Keyboard only when the visible viewport is substantially shorter.
-         Do not treat status bar / Home-indicator differences as a keyboard. */
-      keyboard=(kind==='virtual-keyboard') || (diff>=120 && ih>0 && diff/ih>=0.15);
+      keyboard=(kind==='virtual-keyboard') || (diff>=120 && appH>0 && diff/appH>=0.15);
 
-      /* v12: the extra app height is needed for Home Screen edge-to-edge
-         rendering, but it must not shove chat controls below the screen.
-         Reserve it only as internal bottom compensation while keyboard is
-         closed; remove it while the software keyboard is open. */
-      var layoutSafeTop = safeTopPx();
-      document.documentElement.style.setProperty(
-        '--rl7-bottom-comp',
-        keyboard ? '0px' : (layoutSafeTop + 'px'),
-        'important'
-      );
+      /* ONE geometry owner:
+         - closed keyboard: chat exactly equals the rendered #app height
+         - open keyboard: chat equals visualViewport.height
+         No safe-top additions, no artificial bottom compensation. */
+      var h=Math.round(keyboard ? vvH : appH);
 
+      document.documentElement.style.setProperty('--chat-h',h+'px','important');
+      document.documentElement.style.setProperty('--rl7-chat-height',h+'px','important');
+      document.documentElement.style.setProperty('--kbd',keyboard?Math.round(diff)+'px':'0px','important');
+
+      /* Keep the chat layer anchored at y=0. This preserves the earlier fix
+         for the iOS "whole chat shoots upward" problem. */
       document.documentElement.style.setProperty('--chat-offset','0px','important');
-      document.documentElement.style.setProperty('--kbd',keyboard?Math.max(0,Math.round(diff))+'px':'0px','important');
+      document.documentElement.style.setProperty('--rl7-bottom-comp','0px','important');
 
-      if (chatActive()) {
-        /* Critical fix:
-           - keyboard closed: use layout viewport / 100dvh equivalent, so the
-             page actually reaches the bottom of the screen.
-           - keyboard open: use visualViewport.height so the editor stays above
-             the keyboard. */
-        var safeTop = layoutSafeTop;
-        /* black-translucent standalone quirk:
-           innerHeight / visualViewport.height may exclude the top safe-area
-           even though the fixed page begins at y=0. Without adding safeTop,
-           the whole app ends ~59px early on Dynamic-Island iPhones. */
-        var h = keyboard
-          ? Math.round(vh + safeTop)
-          : Math.round(Math.max(ih, vh) + safeTop);
-        document.documentElement.style.setProperty('--rl7-chat-height',h+'px','important');
+      if(chatActive()){
         var page=document.getElementById('page-chat-room');
         if(page){
           page.style.setProperty('top','0px','important');
+          page.style.setProperty('bottom','auto','important');
           page.style.setProperty('height',h+'px','important');
           page.style.setProperty('min-height',h+'px','important');
           page.style.setProperty('max-height',h+'px','important');
@@ -593,12 +542,15 @@
           page.style.setProperty('translate','none','important');
           page.style.setProperty('padding-top','0px','important');
           page.style.setProperty('padding-bottom','0px','important');
+          page.style.setProperty('box-sizing','border-box','important');
         }
         zeroScroll();
       }
+
       hardInputWhite();
     });
   }
+
   function stagedRecovery(){
     [0,30,80,160,320,650,1100].forEach(function(ms){
       setTimeout(function(){syncViewport();hardInputWhite();syncChromeColor();},ms);
