@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v14
+/* RL7 HARD FIX v15
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix14';
+  var VERSION = '20260915-hardfix15';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -409,35 +409,51 @@
 
 
       /* =========================================================
-         v14 — DECOUPLE BOTTOM CONTROLS FROM CONTENT LAYOUT
+         v15 — BOTTOM CONTROLS ARE PHYSICALLY INDEPENDENT
          ========================================================= */
 
-      /* Home app grid stays exactly where v13 put it.
-         The navigation bar is independently anchored to #app's physical bottom. */
+      /* IMPORTANT:
+         In this iOS Home-Screen PWA, #app's layout viewport ends roughly one
+         top-safe-area above the physical screen bottom. Do NOT resize #app
+         again: that moved the home app grid. Instead, move ONLY the controls
+         that are supposed to touch the physical bottom by exactly safe-top. */
+
+      /* HOME NAV:
+         independent of the 8 home app icons; those stay in their current place. */
       html.rl7-ios-fix #app.phone-frame > .bottom-nav {
         position:absolute !important;
         left:0 !important;
         right:0 !important;
-        bottom:0 !important;
         top:auto !important;
+        bottom:calc(0px - env(safe-area-inset-top, 0px)) !important;
         margin:0 auto !important;
-        padding-top:4px !important;
+        padding-top:6px !important;
         padding-bottom:var(--safe-bottom, env(safe-area-inset-bottom, 0px)) !important;
         transform:none !important;
         translate:none !important;
         box-sizing:border-box !important;
-        z-index:500 !important;
+        z-index:190 !important; /* below full-screen chat (z-index 210) */
       }
 
-      /* Chat input is no longer a flex child that can be pushed around by
-         message height / viewport recalculation. It is independently pinned
-         to the bottom edge of the chat page. */
+      /* Hide the global nav immediately while a full-screen chat is active.
+         This is the conflict that was covering the chat input in v14. */
+      html.rl7-chat-active #app.phone-frame > .bottom-nav,
+      #app.phone-frame:has(#page-chat-room.active) > .bottom-nav {
+        display:none !important;
+        visibility:hidden !important;
+        pointer-events:none !important;
+      }
+
+      /* CHAT INPUT:
+         independent of chat message flex sizing. Closed keyboard: extend down
+         by safe-top to the physical screen bottom. Open keyboard: bottom:0 so
+         it sits directly above the keyboard. */
       html.rl7-ios-fix #page-chat-room .chat-input-zone {
         position:absolute !important;
         left:0 !important;
         right:0 !important;
-        bottom:0 !important;
         top:auto !important;
+        bottom:calc(0px - env(safe-area-inset-top, 0px)) !important;
         width:100% !important;
         min-height:0 !important;
         padding-bottom:env(safe-area-inset-bottom, 0px) !important;
@@ -454,14 +470,11 @@
         border-top:1px solid rgba(255,255,255,.34) !important;
       }
 
-      /* When the software keyboard is already occupying the iPhone bottom safe
-         area, do not add the Home-indicator inset a second time. */
       html.rl7-keyboard-open #page-chat-room .chat-input-zone {
+        bottom:0 !important;
         padding-bottom:0 !important;
       }
 
-      /* Override the older dark glass rule: the actual typing row uses the
-         same light glass as its containing zone, so there is no black band. */
       html.rl7-ios-fix #page-chat-room .chat-input-bar {
         background:transparent !important;
         -webkit-backdrop-filter:none !important;
@@ -469,17 +482,29 @@
         border-top:0 !important;
       }
 
-      /* The input is now overlaid independently, so reserve scrollable message
-         space for it. This does NOT move the input itself. */
+      /* Reserve only scroll space; this never positions the input itself. */
       html.rl7-ios-fix #page-chat-room .chat-messages {
         box-sizing:border-box !important;
         padding-bottom:calc(76px + env(safe-area-inset-bottom, 0px)) !important;
       }
 
-      /* Plus/sticker panels grow upward from the pinned bottom zone. */
       html.rl7-ios-fix #page-chat-room:has(.chat-panel-area.open-plus) .chat-messages,
       html.rl7-ios-fix #page-chat-room:has(.chat-panel-area.open-sticker) .chat-messages {
         padding-bottom:calc(76px + var(--chat-panel-h, 300px) + env(safe-area-inset-bottom, 0px)) !important;
+      }
+
+      /* Visible size increase while preserving the same grid centers/positions. */
+      #page-home .home-feature-icon {
+        width:48px !important;
+        height:48px !important;
+        border-radius:17px !important;
+        font-size:22px !important;
+      }
+      #app.phone-frame > .bottom-nav .nav-icon-circle {
+        width:48px !important;
+        height:48px !important;
+        border-radius:17px !important;
+        font-size:22px !important;
       }
 
       /* generic sheets */
