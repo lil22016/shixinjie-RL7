@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v15
+/* RL7 HARD FIX v16
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix15';
+  var VERSION = '20260915-hardfix16';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -421,7 +421,9 @@
       /* HOME NAV:
          independent of the 8 home app icons; those stay in their current place. */
       html.rl7-ios-fix #app.phone-frame > .bottom-nav {
-        position:absolute !important;
+        /* FIX v16: fixed positioning makes the nav viewport-based instead of
+           painting outside #app, whose overflow:hidden was clipping it. */
+        position:fixed !important;
         left:0 !important;
         right:0 !important;
         top:auto !important;
@@ -433,6 +435,14 @@
         translate:none !important;
         box-sizing:border-box !important;
         z-index:190 !important; /* below full-screen chat (z-index 210) */
+      }
+
+
+      @media (min-width: 768px) and (max-width: 1199px) {
+        html.rl7-ios-fix #app.phone-frame > .bottom-nav { max-width:836px !important; }
+      }
+      @media (min-width: 1200px) {
+        html.rl7-ios-fix #app.phone-frame > .bottom-nav { max-width:1044px !important; }
       }
 
       /* Hide the global nav immediately while a full-screen chat is active.
@@ -449,7 +459,9 @@
          by safe-top to the physical screen bottom. Open keyboard: bottom:0 so
          it sits directly above the keyboard. */
       html.rl7-ios-fix #page-chat-room .chat-input-zone {
-        position:absolute !important;
+        /* FIX v16: fixed while keyboard is closed so the negative safe-top
+           correction is not clipped by #page-chat-room overflow:hidden. */
+        position:fixed !important;
         left:0 !important;
         right:0 !important;
         top:auto !important;
@@ -471,6 +483,7 @@
       }
 
       html.rl7-keyboard-open #page-chat-room .chat-input-zone {
+        position:absolute !important;
         bottom:0 !important;
         padding-bottom:0 !important;
       }
