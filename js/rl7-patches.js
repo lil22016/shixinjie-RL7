@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v6
+/* RL7 HARD FIX v7
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix6';
+  var VERSION = '20260915-hardfix7';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -44,10 +44,12 @@
      STATUS BAR / SAFE AREA COLOR
      ========================================================= */
   function syncChromeColor() {
-    /* Keep the status/safe-area color deterministic.
-       iOS was alternating between the old hard-coded blue and the app green
-       depending on which page/theme update ran last. */
-    var color = '#e9f7ed';
+    var chat = false;
+    try {
+      var page = document.getElementById('page-chat-room');
+      chat = !!(page && page.classList.contains('active'));
+    } catch (_) {}
+    var color = chat ? '#0d0f10' : '#e9f7ed';
 
     var meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -62,7 +64,8 @@
       document.documentElement.style.setProperty('background-color', color, 'important');
       document.body.style.setProperty('background-color', color, 'important');
       var app = document.getElementById('app');
-      if (app) app.style.setProperty('background-color', color, 'important');
+      if (app && !chat) app.style.setProperty('background-color', '#e9f7ed', 'important');
+      if (app && chat) app.style.removeProperty('background-color');
     } catch (_) {}
   }
 
@@ -141,6 +144,42 @@
         opacity:1 !important;
       }
 
+
+
+      /* Chat topbar readability */
+      #page-chat-room .chat-room-title {
+        color:#ffffff !important;
+        text-shadow:0 1px 2px rgba(0,0,0,.95), 0 0 5px rgba(0,0,0,.70) !important;
+      }
+      #page-chat-room .chat-room-status {
+        color:rgba(255,255,255,.84) !important;
+        text-shadow:0 1px 3px rgba(0,0,0,.92) !important;
+      }
+      #page-chat-room .chat-room-status .chat-room-status-sep {
+        color:rgba(255,255,255,.68) !important;
+      }
+      #page-chat-room .chat-room-back,
+      #page-chat-room .chat-room-action,
+      #page-chat-room .chat-room-back i,
+      #page-chat-room .chat-room-action i {
+        color:rgba(255,255,255,.92) !important;
+        text-shadow:0 1px 3px rgba(0,0,0,.88) !important;
+      }
+
+      /* 心流 label: glass chip similar to chat bubbles */
+      #page-chat-room .chat-mood-intent,
+      #page-chat-room .message-tags-row .chat-mood-intent {
+        color:#ffffff !important;
+        -webkit-text-fill-color:#ffffff !important;
+        background:rgba(30,34,36,.42) !important;
+        border:1px solid rgba(255,255,255,.26) !important;
+        border-radius:12px !important;
+        padding:5px 10px !important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 3px 10px rgba(0,0,0,.16) !important;
+        -webkit-backdrop-filter:blur(14px) saturate(130%) !important;
+        backdrop-filter:blur(14px) saturate(130%) !important;
+        text-shadow:0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.70) !important;
+      }
 
       /* chat bottom "+" panel: glass background + readable labels */
       #chat-panel-area.open-plus,
