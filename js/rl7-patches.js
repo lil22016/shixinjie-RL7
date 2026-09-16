@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v23
+/* RL7 HARD FIX v23.3
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix23';
+  var VERSION = '20260915-hardfix23c';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -330,59 +330,11 @@
   /* v23.2 — iOS/PWA first-open viewport normalization.
      Do not change page/nav/chat geometry; only clear the stray document scroll
      that can leave the whole app one small step above its resting position. */
-  function settleDocumentViewport() {
-    /* Match the user's successful manual action: settle at the document's
-       maximum vertical scroll position, not scrollTop=0. */
-    var root = document.scrollingElement || document.documentElement;
-    var maxY = Math.max(
-      0,
-      (root ? root.scrollHeight : 0) - (window.innerHeight || document.documentElement.clientHeight || 0)
-    );
-    try {
-      window.scrollTo({ top: maxY, left: 0, behavior: 'instant' });
-    } catch (_) {
-      try { window.scrollTo(0, maxY); } catch (__) {}
-    }
-    try { if (root) root.scrollTop = maxY; } catch (_) {}
-  }
+  /* v23.3: upstream owns viewport; RL7 does not simulate scrolling. */
+  function settleDocumentViewport() {}
+  function stagedViewportSettle() {}
 
-  function stagedViewportSettle() {
-    [0, 40, 120, 280, 600].forEach(function(ms){
-      setTimeout(settleDocumentViewport, ms);
-    });
-  }
-
-  function releaseLayoutControl() {
-    try {
-      document.documentElement.classList.remove(
-        'rl7-kbd-open','rl7-chat-pinned','rl7-ios-pwa','rl7-vv-fit'
-      );
-      document.documentElement.style.removeProperty('--rl7-chat-height');
-      document.documentElement.style.removeProperty('--rl7-bottom-comp');
-
-      var page = document.getElementById('page-chat-room');
-      if (page) {
-        ['top','right','bottom','left','width','height','min-height','max-height',
-         'transform','translate','margin','padding-top','padding-bottom',
-         'box-sizing','position'].forEach(function(prop){
-          page.style.removeProperty(prop);
-        });
-      }
-
-      var nav = document.querySelector('.bottom-nav');
-      var app = document.getElementById('app');
-      if (nav) {
-        nav.classList.remove('rl7-nav-portal');
-        ['top','right','bottom','left','width','height','min-height','max-height',
-         'transform','translate','margin','padding-top','padding-bottom',
-         'z-index','position','visibility','pointer-events','background',
-         'background-color','background-image'].forEach(function(prop){
-          nav.style.removeProperty(prop);
-        });
-        if (app && nav.parentElement !== app) app.appendChild(nav);
-      }
-    } catch (_) {}
-  }
+  function releaseLayoutControl() {}
 
   function stagedRecovery(){
     [0,60,180,420].forEach(function(ms){
