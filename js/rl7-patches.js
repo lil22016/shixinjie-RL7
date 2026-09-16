@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v24
+/* RL7 HARD FIX v25
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix24';
+  var VERSION = '20260915-hardfix25';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -161,11 +161,11 @@
         font-size:22px !important;
       }
 
-
-      /* v24 — move the 8 home app icons/text block slightly upward */
-      #page-home #app-swipe-wrapper,
-      #page-home .home-widgets-wrap {
-        transform:translateY(-46px) !important;
+      /* v25: move ONLY the 8 home feature items upward.
+         Do not touch home wrapper/page/viewport geometry. */
+      #page-home .home-feature-grid {
+        position:relative !important;
+        top:-46px !important;
       }
 
 
