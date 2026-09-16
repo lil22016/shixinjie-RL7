@@ -1,8 +1,11 @@
 /* RL7 Companion Expansion v1 — diagnostics, update notice, autonomous shares & shopping */
 (function(){
 'use strict';
-if(window.__RL7_COMPANION_V1__) return; window.__RL7_COMPANION_V1__=1;
-var BUILD='20260915-companion1', LOGKEY='rl7_diag_log_v1', PURCHASEKEY='rl7_partner_purchases_v1';
+if(window.__RL7_COMPANION_V2__) return;
+window.__RL7_COMPANION_V2__=1;
+window.__RL7_COMPANION_V1__=1;
+var BUILD='20260916-companion2', LOGKEY='rl7_diag_log_v1', PURCHASEKEY='rl7_partner_purchases_v1';
+var WA_LOC_KEY='rl7_whereabout_locations_v2', WA_ACT_KEY='rl7_whereabout_actions_v2';
 function esc(s){try{return Core.escapeHtml(String(s==null?'':s));}catch(e){return String(s||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}}
 function get(k,d){try{return Storage.get(k,d)}catch(e){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(_){return d}}}
 function set(k,v){try{Storage.set(k,v)}catch(e){try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}}}
@@ -53,11 +56,211 @@ function autonomousScience(){var cid=chatId();if(!cid||!window.ScienceApp)return
 function autonomousGame(){var cid=chatId();if(!cid)return;var games=[['game-sheep','羊了个羊','🐑'],['game-goose','消消乐','✨'],['game-llk','连连看','🧩'],['game-2048','2048','🔢'],['game-memory','记忆翻牌','🃏']],g=pick(games);push(cid,{id:Date.now(),type:'other',text:'Play with me?',time:Date.now(),msgType:'gameInvite',card:{page:g[0],icon:g[2],title:g[1],sub:pick(["Play with me?","Come on. One round.","I require entertainment. You're invited.","Let's see if you can beat me."])}})}
 function periodChatCheck(){try{if(!window.PeriodCalc)return;var records=Storage.getPeriodRecords();if(!records||!records.length)return;var now=new Date(),today=PeriodCalc.fmt(now),cid=chatId();if(!cid)return;var key='rl7_period_chat_'+today;if(get(key,false))return;var next=PeriodCalc.predictNextPeriodStart(),ov=PeriodCalc.calcOvulationWindow(),msg=null;if(next){var d=PeriodCalc.diffDays(now,next);if(d>=1&&d<=3)msg=pick(["Your period should be coming up soon. Take it easy for me, hm?","A few days until your period. Be kind to yourself—and yes, eat properly.","You're getting close to your period. Consider this your reminder to rest."])}if(!msg&&ov){var ds=PeriodCalc.diffDays(now,ov.start),de=PeriodCalc.diffDays(now,ov.end);if(ds<=0&&de>=0)msg=pick(["You're in your ovulation window, according to your records. Just keeping you informed.","Cycle check: you're around your ovulation window now."])}if(msg){set(key,true);push(cid,{id:Date.now(),type:'other',text:msg,time:Date.now(),msgType:'periodNudge',card:{page:'period',icon:'♥',title:'Cycle reminder',sub:msg}})}}catch(e){log('period-error',String(e))}}
 function patchFreeWill(){if(!window.PartnerFreeWill||PartnerFreeWill.__rl7Expanded)return;PartnerFreeWill.__rl7Expanded=1;Object.assign(PartnerFreeWill._config,{companionShare:{min:240,max:600,catchUpMax:1}});var old=PartnerFreeWill.checkAndAct.bind(PartnerFreeWill);PartnerFreeWill.checkAndAct=function(){var n=old();n+=this._checkBehavior('companionShare',function(){var r=Math.random()*100;if(r<35)autonomousGame();else if(r<65)autonomousShop();else if(r<85)autonomousRecipe();else if(r<93)autonomousScience();else log('share-skip','quiet roll')});periodChatCheck();return n}}
+
+/* ===== v2: Loki-style period reminder ===== */
+function patchPeriodReminder(){
+  try{
+    if(typeof PeriodReminder==='undefined') return;
+    PeriodReminder.quotes=[
+      "Three days, darling. No heroics, no skipping meals, and no pretending you're perfectly fine just to spite me. Take it easy.",
+      "Your period is due in a few days. Keep warm, eat properly, and try not to make me come over there and supervise.",
+      "A few days to go. Rest when you need to, drink something warm, and leave the unnecessary suffering to people with less sense.",
+      "Consider this your warning: your period is close. Be gentle with yourself. I reserve the right to be insufferably attentive.",
+      "Period countdown. If you're tired, rest. If you're hungry, eat. If you're stubborn... unfortunately, I already know.",
+      "Three days. Be sensible for once: sleep, eat, keep warm. I can be dramatic enough for both of us."
+    ];
+    if(!PeriodReminder.__rl7LokiEnglish){
+      PeriodReminder.__rl7LokiEnglish=1;
+      var oldShow=PeriodReminder.show.bind(PeriodReminder);
+      PeriodReminder.show=function(partner,quote,diff){
+        oldShow(partner,quote,diff);
+        try{
+          var ov=document.getElementById('period-reminder-overlay');
+          if(!ov)return;
+          var tag=ov.querySelector('.period-reminder-day-tag');
+          if(tag)tag.innerHTML='<i class="fas fa-heart"></i> Period in '+diff+' day'+(diff===1?'':'s');
+          var a=ov.querySelectorAll('.period-reminder-actions button');
+          if(a[0])a[0].textContent='Got it';
+          if(a[1])a[1].textContent='Open tracker';
+        }catch(e){}
+      };
+    }
+  }catch(e){log('period-reminder-patch-error',String(e))}
+}
+
+/* ===== v2: independent Location + Activity reporter, plus scheduler safety net ===== */
+function readPool(key){
+  try{
+    var a=JSON.parse(localStorage.getItem(key)||'[]');
+    return Array.isArray(a)?a.map(function(x){return String(x||'').trim()}).filter(Boolean):[];
+  }catch(e){return[]}
+}
+function whereaboutPools(){
+  var loc=readPool(WA_LOC_KEY), act=readPool(WA_ACT_KEY);
+  if(!loc.length||!act.length){
+    try{
+      var legacy=Storage.getWhereabouts?Storage.getWhereabouts():[];
+      if(!loc.length)loc=legacy.map(function(x){return x&&x.place}).filter(Boolean);
+      if(!act.length)act=legacy.map(function(x){return x&&x.action}).filter(Boolean);
+    }catch(e){}
+  }
+  if(!loc.length)loc=['Home','Library','Park','Bookstore','Cafe'];
+  if(!act.length)act=['reading','working','taking a walk','listening to music','doing absolutely nothing useful'];
+  return {locations:loc,actions:act};
+}
+function whereaboutRoles(){
+  try{
+    var ps=Storage.getPartnerProfiles?Storage.getPartnerProfiles():[];
+    if(ps&&ps.length)return ps.map(function(p){return{
+      id:p.id,name:p.nickname||p.name||'Loki',color:p.avatarColor||'#C8B8E0',avatarImage:p.avatarImage||''
+    }});
+  }catch(e){}
+  return [{id:'default',name:'Loki',color:'#C8B8E0',avatarImage:''}];
+}
+function companionReportWhereabout(silent){
+  try{
+    var pp=whereaboutPools(), roles=whereaboutRoles();
+    if(!pp.locations.length&&!pp.actions.length)return false;
+    var role=pick(roles)||roles[0], place=pick(pp.locations)||'somewhere', action=pick(pp.actions)||'';
+    var text;
+    if(action){
+      text=pick([
+        role.name+'在'+place+'，'+action,
+        role.name+'在'+place+'进行了'+action,
+        role.name+'到达了'+place+'，正在'+action
+      ]);
+    }else{
+      text=role.name+'到达了'+place;
+    }
+    Storage.addWhereaboutReport({
+      roleId:role.id,roleName:role.name,color:role.color,text:text
+    });
+    if(!silent&&window.Core&&Core.toast)Core.toast(role.name+' 汇报了一条行踪');
+    /* render without letting the page-level auto hook immediately generate a duplicate */
+    var oldSkip=window._skipAutoReport;
+    window._skipAutoReport=true;
+    try{
+      var page=document.getElementById('page-whereabout-reports');
+      if(page&&page.classList.contains('active')&&typeof renderWhereaboutReports==='function')renderWhereaboutReports();
+    }finally{
+      window._skipAutoReport=oldSkip;
+    }
+    log('whereabout-report',{place:place,action:action,silent:!!silent});
+    return true;
+  }catch(e){
+    log('whereabout-report-error',String(e));
+    return false;
+  }
+}
+function companionWhereaboutDue(){
+  try{
+    var def={enabled:true,intervalMin:30,startHour:8,endHour:22};
+    var st=get('whereaboutSettings',def)||def;
+    if(st.enabled===false)return;
+    var interval=parseInt(st.intervalMin,10)||30;
+    var start=parseInt(st.startHour,10); if(isNaN(start))start=8;
+    var end=parseInt(st.endHour,10); if(isNaN(end))end=22;
+    var now=new Date(), hour=now.getHours(), within;
+    if(start<=end)within=(hour>=start&&hour<end);
+    else within=(hour>=start||hour<end);
+    if(!within)return;
+    var last=Number(get('whereaboutAutoReportTime',0))||0;
+    if(last>now.getTime()+5*60*1000){last=0;set('whereaboutAutoReportTime',0);}
+    if(now.getTime()-last<interval*60*1000)return;
+    set('whereaboutAutoReportTime',now.getTime());
+    companionReportWhereabout(true);
+  }catch(e){log('whereabout-scheduler-error',String(e))}
+}
+function patchWhereaboutEngine(){
+  if(window.__rl7CompanionWhereaboutV2)return;
+  window.__rl7CompanionWhereaboutV2=1;
+  window.reportWhereaboutByRole=companionReportWhereabout;
+  /* the original scheduler may already be alive; start() is idempotent */
+  try{if(typeof window.startWhereaboutScheduler==='function')window.startWhereaboutScheduler()}catch(e){}
+  companionWhereaboutDue();
+  window.__rl7CompanionWhereaboutTimer=setInterval(companionWhereaboutDue,60*1000);
+}
+
+/* ===== v2: quoting a message must focus without letting iOS pan the fixed chat page ===== */
+function patchQuoteFocus(){
+  if(window.__rl7QuoteFocusV2||typeof window.doQuoteMessage!=='function')return;
+  window.__rl7QuoteFocusV2=1;
+  var oldQuote=window.doQuoteMessage;
+  window.doQuoteMessage=function(){
+    var input=document.getElementById('chat-input');
+    if(!input)return oldQuote.apply(this,arguments);
+    var hadOwn=Object.prototype.hasOwnProperty.call(input,'focus');
+    var ownFocus=input.focus;
+    var nativeFocus=HTMLElement.prototype.focus;
+    try{
+      input.focus=function(){
+        try{return nativeFocus.call(input,{preventScroll:true})}
+        catch(e){try{return nativeFocus.call(input)}catch(_){return undefined}}
+      };
+      return oldQuote.apply(this,arguments);
+    }finally{
+      try{
+        if(hadOwn)input.focus=ownFocus;
+        else delete input.focus;
+      }catch(e){}
+      [0,60,180,360].forEach(function(ms){
+        setTimeout(function(){
+          try{
+            var page=document.getElementById('page-chat-room');
+            if(!page||!page.classList.contains('active'))return;
+            document.documentElement.scrollTop=0;
+            document.body.scrollTop=0;
+            window.scrollTo(0,0);
+          }catch(e){}
+        },ms);
+      });
+    }
+  };
+}
+
 function renderPurchases(){var el=document.getElementById('rl7-partner-purchases-list');if(!el)return;var a=get(PURCHASEKEY,[]);if(!a.length){el.innerHTML='<div class="rl7-empty">Nothing here yet. Loki has apparently shown restraint.</div>';return}el.innerHTML=a.map(function(x){var d=new Date(x.time);return '<div class="rl7-purchase"><div class="rl7-purchase-icon">'+esc(x.icon||'🛍️')+'</div><div class="rl7-purchase-main"><b>'+esc(x.name)+'</b><span>'+esc(x.label||'Purchased')+' · '+d.toLocaleString()+'</span></div><strong>¥'+esc(x.price)+'</strong></div>'}).join('')}
-function diagReport(){var vv=window.visualViewport, sw='unsupported';try{sw=navigator.serviceWorker&&navigator.serviceWorker.controller?'controlled':'no-controller'}catch(e){}var logs=get(LOGKEY,[]);return ['RL7 Diagnostic Report','Build: '+BUILD,'URL: '+location.href,'Standalone: '+(matchMedia('(display-mode: standalone)').matches||navigator.standalone===true),'Viewport: '+innerWidth+'x'+innerHeight,'VisualViewport: '+(vv?Math.round(vv.width)+'x'+Math.round(vv.height)+' offsetTop='+Math.round(vv.offsetTop):'none'),'scrollY: '+scrollY,'visibility: '+document.visibilityState,'ServiceWorker: '+sw,'Online: '+navigator.onLine,'UA: '+navigator.userAgent,'FreeWill: '+JSON.stringify(window.PartnerFreeWill&&PartnerFreeWill.peek?PartnerFreeWill.peek():null),'Recent logs: '+JSON.stringify(logs.slice(0,20))].join('\n')}
+function diagReport(){
+  var vv=window.visualViewport, sw='unsupported';
+  try{sw=navigator.serviceWorker&&navigator.serviceWorker.controller?'controlled':'no-controller'}catch(e){}
+  var logs=get(LOGKEY,[]), pp=whereaboutPools(), wa=get('whereaboutSettings',{});
+  var rootStyle=getComputedStyle(document.documentElement);
+  var room=document.getElementById('page-chat-room');
+  var cv={
+    chatActive:!!(room&&room.classList.contains('active')),
+    chatId:room&&room.dataset?room.dataset.chatId||'':'',
+    chatH:rootStyle.getPropertyValue('--chat-h').trim(),
+    kbd:rootStyle.getPropertyValue('--kbd').trim(),
+    chatOffset:rootStyle.getPropertyValue('--chat-offset').trim()
+  };
+  var waDiag={
+    settings:wa,
+    lastAuto:get('whereaboutAutoReportTime',0)||0,
+    lastPage:get('whereaboutPageAutoReportTime',0)||0,
+    locations:pp.locations.length,
+    activities:pp.actions.length,
+    reports:(function(){try{return (Storage.getWhereaboutReports()||[]).length}catch(e){return -1}})()
+  };
+  return [
+    'RL7 Diagnostic Report',
+    'Build: '+BUILD,
+    'URL: '+location.href,
+    'Standalone: '+(matchMedia('(display-mode: standalone)').matches||navigator.standalone===true),
+    'Viewport: '+innerWidth+'x'+innerHeight,
+    'VisualViewport: '+(vv?Math.round(vv.width)+'x'+Math.round(vv.height)+' offsetTop='+Math.round(vv.offsetTop):'none'),
+    'scrollY: '+scrollY,
+    'visibility: '+document.visibilityState,
+    'ServiceWorker: '+sw,
+    'Online: '+navigator.onLine,
+    'UA: '+navigator.userAgent,
+    'ChatViewport: '+JSON.stringify(cv),
+    'Whereabouts: '+JSON.stringify(waDiag),
+    'FreeWill: '+JSON.stringify(window.PartnerFreeWill&&PartnerFreeWill.peek?PartnerFreeWill.peek():null),
+    'Recent logs: '+JSON.stringify(logs.slice(0,20))
+  ].join('\n')
+}
 window.RL7CopyDiagnostics=function(){var t=diagReport();if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){Core.toast('Debug report copied')}).catch(function(){prompt('Copy debug report:',t)});else prompt('Copy debug report:',t)};
 function installPages(){
- var discover=document.querySelector('#page-discover .discover-list');if(discover&&!document.getElementById('rl7-purchase-entry')){var x=document.createElement('div');x.id='rl7-purchase-entry';x.className='discover-item';x.onclick=function(){Navigation.navigateTo('partner-purchases')};x.innerHTML='<div class="discover-icon"><i class="fas fa-bag-shopping"></i></div><div class="discover-info"><div class="discover-title">他的购买</div><div class="discover-desc">TA 自己悄悄买下的东西</div></div><i class="fas fa-chevron-right discover-arrow"></i>';var hf=[...discover.querySelectorAll('.discover-item')].find(e=>e.textContent.includes('他的收藏'));if(hf)hf.insertAdjacentElement('afterend',x);else discover.prepend(x)}
+ var discover=document.querySelector('#page-discover .discover-list');if(discover&&!document.getElementById('rl7-purchase-entry')){var x=document.createElement('div');x.id='rl7-purchase-entry';x.className='discover-item';x.onclick=function(){Navigation.navigateTo('partner-purchases')};x.innerHTML='<div class="discover-icon"><i class="fas fa-store"></i></div><div class="discover-info"><div class="discover-title">他的购买</div><div class="discover-desc">TA 自己悄悄买下的东西</div></div><i class="fas fa-chevron-right discover-arrow"></i>';var hf=[...discover.querySelectorAll('.discover-item')].find(e=>e.textContent.includes('他的收藏'));if(hf)hf.insertAdjacentElement('afterend',x);else discover.prepend(x)}
  var settings=document.querySelector('#page-settings .settings-list');var lists=document.querySelectorAll('#page-settings .settings-list');if(lists.length&&!document.getElementById('rl7-diag-entry')){var last=lists[lists.length-1],d=document.createElement('div');d.id='rl7-diag-entry';d.className='settings-item';d.onclick=function(){Navigation.navigateTo('diagnostics')};d.innerHTML='<div class="s-icon"><i class="fas fa-bug"></i></div><div class="s-content"><div class="s-label">Diagnostics</div><div class="s-value">Copy a debug report when something breaks</div></div><i class="fas fa-chevron-right s-arrow"></i>';last.prepend(d)}
  if(!document.getElementById('page-partner-purchases')){var p=document.createElement('div');p.id='page-partner-purchases';p.className='page';p.innerHTML='<div class="top-nav"><div class="back-btn" onclick="Navigation.goBack()"><i class="fas fa-chevron-left"></i></div><div class="nav-title">他的购买</div></div><div id="rl7-partner-purchases-list" class="rl7-purchase-list"></div>';document.getElementById('app').appendChild(p)}
  if(!document.getElementById('page-diagnostics')){var d2=document.createElement('div');d2.id='page-diagnostics';d2.className='page';d2.innerHTML='<div class="top-nav"><div class="back-btn" onclick="Navigation.goBack()"><i class="fas fa-chevron-left"></i></div><div class="nav-title">Diagnostics</div></div><div class="rl7-diag"><div class="glass-section"><b>Build</b><div>'+BUILD+'</div></div><button class="glass-btn primary" onclick="RL7CopyDiagnostics()">Copy Debug Report</button><pre id="rl7-diag-preview"></pre></div>';document.getElementById('app').appendChild(d2)}
@@ -66,6 +269,6 @@ function patchNav(){if(!window.Navigation||Navigation.__rl7Expanded)return;Navig
 function updateNotice(){var old=get('rl7_seen_build','');if(old!==BUILD){set('rl7_seen_build',BUILD);setTimeout(function(){alert('已更新');},900)}}
 function css(){var s=document.createElement('style');s.textContent='.rl7-card-kicker{font-size:11px;opacity:.65;margin-bottom:7px}.rl7-card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.rl7-card-actions button{border:0;border-radius:999px;padding:7px 10px;background:rgba(255,255,255,.7);color:#25362f;font-size:12px}.rl7-card-status{font-size:11px;opacity:.6;margin-top:8px}.rl7-link-card{min-width:210px;display:grid;grid-template-columns:42px 1fr 16px;gap:10px;align-items:center;padding:5px}.rl7-link-icon{font-size:28px}.rl7-link-title{font-weight:700}.rl7-link-sub{font-size:12px;opacity:.7;margin-top:4px}.rl7-purchase-list{padding:12px 14px}.rl7-purchase{display:flex;gap:12px;align-items:center;padding:12px;margin-bottom:10px;border-radius:16px;background:rgba(255,255,255,.55);backdrop-filter:blur(12px)}.rl7-purchase-icon{font-size:28px}.rl7-purchase-main{flex:1;display:flex;flex-direction:column}.rl7-purchase-main span{font-size:11px;opacity:.6;margin-top:4px}.rl7-empty{padding:40px 20px;text-align:center;opacity:.55}.rl7-diag{padding:16px}.rl7-diag .glass-section{padding:14px;margin-bottom:12px}.rl7-diag pre{white-space:pre-wrap;word-break:break-word;font-size:11px;background:rgba(0,0,0,.06);padding:12px;border-radius:12px;margin-top:12px}';document.head.appendChild(s)}
 window.addEventListener('error',function(e){log('error',{message:e.message,file:e.filename,line:e.lineno,col:e.colno})});window.addEventListener('unhandledrejection',function(e){log('promise',String(e.reason&&e.reason.message||e.reason))});
-function boot(){css();installPages();patchNav();patchRenderer();patchShop();patchFreeWill();periodChatCheck();updateNotice();setInterval(function(){try{patchRenderer();patchShop();patchFreeWill();periodChatCheck()}catch(e){}},10*60*1000)}
+function boot(){css();installPages();patchNav();patchRenderer();patchShop();patchFreeWill();patchPeriodReminder();patchWhereaboutEngine();patchQuoteFocus();periodChatCheck();updateNotice();setInterval(function(){try{patchRenderer();patchShop();patchFreeWill();patchPeriodReminder();patchQuoteFocus();periodChatCheck()}catch(e){}},10*60*1000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(boot,400)});else setTimeout(boot,400);
 })();
