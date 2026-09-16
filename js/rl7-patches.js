@@ -327,17 +327,23 @@
     hardInputWhite();
   }
 
-  /* v23.1 — iOS/PWA first-open viewport normalization.
+  /* v23.2 — iOS/PWA first-open viewport normalization.
      Do not change page/nav/chat geometry; only clear the stray document scroll
      that can leave the whole app one small step above its resting position. */
   function settleDocumentViewport() {
+    /* Match the user's successful manual action: settle at the document's
+       maximum vertical scroll position, not scrollTop=0. */
+    var root = document.scrollingElement || document.documentElement;
+    var maxY = Math.max(
+      0,
+      (root ? root.scrollHeight : 0) - (window.innerHeight || document.documentElement.clientHeight || 0)
+    );
     try {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      window.scrollTo({ top: maxY, left: 0, behavior: 'instant' });
     } catch (_) {
-      try { window.scrollTo(0, 0); } catch (__) {}
+      try { window.scrollTo(0, maxY); } catch (__) {}
     }
-    try { document.documentElement.scrollTop = 0; } catch (_) {}
-    try { document.body.scrollTop = 0; } catch (_) {}
+    try { if (root) root.scrollTop = maxY; } catch (_) {}
   }
 
   function stagedViewportSettle() {
