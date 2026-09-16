@@ -1,4 +1,4 @@
-/* RL7 HARD FIX v23.3
+/* RL7 HARD FIX v24
  * - robust iOS viewport + white chat input
  * - working MediaSession keepalive
  * - status-bar/safe-area color follows app background
@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260915-hardfix23c';
+  var VERSION = '20260915-hardfix24';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -51,7 +51,18 @@
       var page = document.getElementById('page-chat-room');
       chat = !!(page && page.classList.contains('active'));
     } catch (_) {}
-    var color = chat ? '#0d0f10' : '#e9f7ed';
+    /* Follow the active site theme on every non-chat tab.  The old hard-coded
+       #e9f7ed was the green sheet that remained visible on Wordcard/Discover/Settings. */
+    var color = '#0d0f10';
+    if (!chat) {
+      try {
+        var cs = getComputedStyle(document.documentElement);
+        color = (cs.getPropertyValue('--bg-main') || cs.getPropertyValue('--background') || '').trim() || '#ffffff';
+        /* theme-color needs a real color; if the theme variable is a gradient, use the
+           actual computed app/body background instead. */
+        if (/gradient\(/i.test(color)) color = getComputedStyle(document.body).backgroundColor || '#ffffff';
+      } catch (_) { color = '#ffffff'; }
+    }
 
     var meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -66,7 +77,7 @@
       document.documentElement.style.setProperty('background-color', color, 'important');
       document.body.style.setProperty('background-color', color, 'important');
       var app = document.getElementById('app');
-      if (app && !chat) app.style.setProperty('background-color', '#e9f7ed', 'important');
+      if (app && !chat) app.style.setProperty('background-color', 'var(--bg-main)', 'important');
       if (app && chat) app.style.removeProperty('background-color');
     } catch (_) {}
   }
@@ -159,6 +170,13 @@
         height:48px !important;
         border-radius:17px !important;
         font-size:22px !important;
+      }
+
+
+      /* v24 — move the 8 home app icons/text block slightly upward */
+      #page-home #app-swipe-wrapper,
+      #page-home .home-widgets-wrap {
+        transform:translateY(-46px) !important;
       }
 
 
@@ -327,14 +345,37 @@
     hardInputWhite();
   }
 
-  /* v23.2 — iOS/PWA first-open viewport normalization.
-     Do not change page/nav/chat geometry; only clear the stray document scroll
-     that can leave the whole app one small step above its resting position. */
-  /* v23.3: upstream owns viewport; RL7 does not simulate scrolling. */
-  function settleDocumentViewport() {}
-  function stagedViewportSettle() {}
+  function releaseLayoutControl() {
+    try {
+      document.documentElement.classList.remove(
+        'rl7-kbd-open','rl7-chat-pinned','rl7-ios-pwa','rl7-vv-fit'
+      );
+      document.documentElement.style.removeProperty('--rl7-chat-height');
+      document.documentElement.style.removeProperty('--rl7-bottom-comp');
 
-  function releaseLayoutControl() {}
+      var page = document.getElementById('page-chat-room');
+      if (page) {
+        ['top','right','bottom','left','width','height','min-height','max-height',
+         'transform','translate','margin','padding-top','padding-bottom',
+         'box-sizing','position'].forEach(function(prop){
+          page.style.removeProperty(prop);
+        });
+      }
+
+      var nav = document.querySelector('.bottom-nav');
+      var app = document.getElementById('app');
+      if (nav) {
+        nav.classList.remove('rl7-nav-portal');
+        ['top','right','bottom','left','width','height','min-height','max-height',
+         'transform','translate','margin','padding-top','padding-bottom',
+         'z-index','position','visibility','pointer-events','background',
+         'background-color','background-image'].forEach(function(prop){
+          nav.style.removeProperty(prop);
+        });
+        if (app && nav.parentElement !== app) app.appendChild(nav);
+      }
+    } catch (_) {}
+  }
 
   function stagedRecovery(){
     [0,60,180,420].forEach(function(ms){
@@ -342,7 +383,6 @@
         releaseLayoutControl();
         hardInputWhite();
         syncChromeColor();
-        stagedViewportSettle();
       },ms);
     });
   }
@@ -764,7 +804,6 @@
       releaseLayoutControl();
       hardInputWhite();
       syncChromeColor();
-      stagedViewportSettle();
     },{passive:true});
 
     document.addEventListener('visibilitychange',function(){
@@ -791,7 +830,7 @@
     document.documentElement.classList.remove('rl7-chat-active','rl7-keyboard-open');
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();stagedViewportSettle();
+    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
