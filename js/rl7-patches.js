@@ -327,6 +327,25 @@
     hardInputWhite();
   }
 
+  /* v23.1 — iOS/PWA first-open viewport normalization.
+     Do not change page/nav/chat geometry; only clear the stray document scroll
+     that can leave the whole app one small step above its resting position. */
+  function settleDocumentViewport() {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    } catch (_) {
+      try { window.scrollTo(0, 0); } catch (__) {}
+    }
+    try { document.documentElement.scrollTop = 0; } catch (_) {}
+    try { document.body.scrollTop = 0; } catch (_) {}
+  }
+
+  function stagedViewportSettle() {
+    [0, 40, 120, 280, 600].forEach(function(ms){
+      setTimeout(settleDocumentViewport, ms);
+    });
+  }
+
   function releaseLayoutControl() {
     try {
       document.documentElement.classList.remove(
@@ -365,6 +384,7 @@
         releaseLayoutControl();
         hardInputWhite();
         syncChromeColor();
+        stagedViewportSettle();
       },ms);
     });
   }
@@ -786,6 +806,7 @@
       releaseLayoutControl();
       hardInputWhite();
       syncChromeColor();
+      stagedViewportSettle();
     },{passive:true});
 
     document.addEventListener('visibilitychange',function(){
@@ -812,7 +833,7 @@
     document.documentElement.classList.remove('rl7-chat-active','rl7-keyboard-open');
     var staleCap=document.getElementById('rl7-safe-top');
     if(staleCap) staleCap.remove();
-    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();
+    installCSS();releaseLayoutControl();syncChromeColor();hardInputWhite();installViewport();installChatInputHitArea();stagedViewportSettle();
     installPats();installWhereabouts();
 
     ensureKeepLib().then(function(){
