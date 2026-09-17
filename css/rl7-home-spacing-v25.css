@@ -7,10 +7,12 @@
     padding-top:36px!important;
     transform:none!important;
   }
+
   #page-home #app-swipe-wrapper .home-core-row{
-    transform:translateY(22px)!important;
+    transform:translateY(-10px)!important;
   }
+
   #page-home #home-widgets-grid{
-    transform:translateY(22px)!important;
+    transform:translateY(-10px)!important;
   }
 }
