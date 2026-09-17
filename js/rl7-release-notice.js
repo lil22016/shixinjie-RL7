@@ -2,8 +2,8 @@
 (function(){
 'use strict';
 
-var RELEASE='20260917-v11';
-var RELEASE_KEY='rl7_release_ack_20260917_v11';
+var RELEASE='20260917-v12';
+var RELEASE_KEY='rl7_release_ack_20260917_v12';
 var DREAM_DT_KEY='rl7_dream_datetime_v1';
 
 function pad(n){return String(n).padStart(2,'0');}
@@ -79,12 +79,18 @@ function installStyle(){
 
     /* Dates now belong to their respective clock cards. */
     #page-home .time-card{box-sizing:border-box!important}
+    #page-home .dual-time-bar .time-card{
+      min-height:0!important;
+    }
     #page-home .rl7-clock-date{
-      margin-top:4px;font-size:11px;line-height:1.25;text-align:center;
-      color:var(--text-light);white-space:nowrap;opacity:.92;
+      margin-top:2px;font-size:11px;line-height:1.2;text-align:center;
+      color:#fff!important;white-space:nowrap;opacity:1!important;
+      text-shadow:0 1px 3px rgba(0,0,0,.42);
       pointer-events:none;
     }
-    #page-home #partner-time-card .time-card-hint{margin-top:2px!important}
+    /* Both old hint rows are redundant: dream clock is edited by tapping the card;
+       device clock is system-controlled. Hiding them restores the original card height/spacing. */
+    #page-home .time-card-hint{display:none!important}
 
     /* Date field added to the existing dream-time dialog. */
     #dream-time-overlay .rl7-dream-date-row{margin:0 0 12px}
@@ -202,7 +208,7 @@ function bind(){
 function showRelease(){
   if(document.getElementById('rl7-release-overlay'))return;
   var ov=document.createElement('div');ov.id='rl7-release-overlay';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
-  ov.innerHTML='<div class="rl7-update-card"><div class="rl7-update-title">Updated</div><div class="rl7-update-copy">Dual clocks now include their own dates. Dream time can adjust both date and time.</div><div class="rl7-update-actions"><button id="rl7-release-ok" type="button">OK</button></div></div>';
+  ov.innerHTML='<div class="rl7-update-card"><div class="rl7-update-title">Updated</div><div class="rl7-update-copy">Dates are now clearer, clock cards are back to their compact layout, and redundant adjustment hints are removed.</div><div class="rl7-update-actions"><button id="rl7-release-ok" type="button">OK</button></div></div>';
   document.body.appendChild(ov);
   var ok=document.getElementById('rl7-release-ok');
   if(ok)ok.onclick=function(){try{localStorage.setItem(RELEASE_KEY,RELEASE)}catch(e){}ov.remove();};
