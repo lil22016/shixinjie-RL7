@@ -37,8 +37,6 @@
 .rl7-hcw-arrow{color:var(--text-light);font-size:12px}
 
 #page-home.page{padding-top:calc(var(--safe-top) + 12px)!important}
-#page-settings.page{padding-top:calc(var(--safe-top) + 10px)!important}
-#page-discover.page{padding-top:calc(var(--safe-top) + 10px)!important}
 
 html.rl7-theme-follow,html.rl7-theme-follow body,html.rl7-theme-follow #app.phone-frame{background-color:var(--bg-main)!important}
 html.rl7-theme-follow #page-home{background:var(--bg-gradient,var(--bg-main))!important}
@@ -57,8 +55,47 @@ html.rl7-theme-follow #page-home{background:var(--bg-gradient,var(--bg-main))!im
 .rl7-lc-slider-row input[type=range]{width:100%}
 .rl7-lc-slider-row b{text-align:right;font-size:11px;color:#ffffffa0;font-weight:600}
 
-/* Every main bottom-tab page follows the selected theme.  No fixed mint sheet. */
+/* Every main bottom-tab page follows the selected theme. No fixed mint sheet. */
 html.rl7-theme-follow #page-home,
 html.rl7-theme-follow #page-wordcard,
 html.rl7-theme-follow #page-discover,
 html.rl7-theme-follow #page-settings{background:var(--bg-gradient,var(--bg-main))!important;background-color:var(--bg-main)!important}
+
+/* 2026-09-16 top/layout fix v3 */
+#page-home #app-swipe-wrapper.home-widgets-wrap{
+  padding-top:44px !important;
+  box-sizing:border-box;
+}
+#page-wordcard.page,
+#page-discover.page,
+#page-settings.page{
+  padding-top:var(--safe-top) !important;
+  box-sizing:border-box;
+}
+#page-wordcard > .page-header:first-child,
+#page-discover > .page-header:first-child,
+#page-settings > .page-header:first-child{
+  margin-top:0 !important;
+}
+html.rl7-theme-follow #page-wordcard::before,
+html.rl7-theme-follow #page-discover::before,
+html.rl7-theme-follow #page-settings::before{
+  content:none !important;
+  display:none !important;
+  background:transparent !important;
+  -webkit-backdrop-filter:none !important;
+  backdrop-filter:none !important;
+  box-shadow:none !important;
+}
+html.rl7-theme-follow body,
+html.rl7-theme-follow #app.phone-frame,
+html.rl7-theme-follow #page-wordcard,
+html.rl7-theme-follow #page-discover,
+html.rl7-theme-follow #page-settings{
+  background-color:var(--bg-main) !important;
+}
+html.rl7-theme-follow #page-wordcard,
+html.rl7-theme-follow #page-discover,
+html.rl7-theme-follow #page-settings{
+  background:var(--bg-gradient,var(--bg-main)) !important;
+}
