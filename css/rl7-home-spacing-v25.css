@@ -1,0 +1,16 @@
+/* RL7 mobile home spacing v25
+   Screenshot-tuned: v4 used -28px and pushed the app grid into Need company.
+   v25 places the app rows at +22px, a net +50px from the current screenshot.
+*/
+@media (max-width:600px){
+  #page-home #app-swipe-wrapper{
+    padding-top:36px!important;
+    transform:none!important;
+  }
+  #page-home #app-swipe-wrapper .home-core-row{
+    transform:translateY(22px)!important;
+  }
+  #page-home #home-widgets-grid{
+    transform:translateY(22px)!important;
+  }
+}
