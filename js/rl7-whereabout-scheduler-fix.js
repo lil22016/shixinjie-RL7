@@ -87,7 +87,10 @@ function writeReport(){
     roleId:r.id,
     roleName:r.name,
     color:r.color,
-    text:text
+    place:place,
+    action:action,
+    text:text,
+    time:Date.now()
   });
 
   /* If the report page is currently open, refresh it immediately.

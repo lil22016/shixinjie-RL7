@@ -50,19 +50,36 @@ function lsCandidates(words){
 }
 function source(type){
   try{
-    if(type==='whereabout') return Storage.getWhereaboutReports?Storage.getWhereaboutReports():sget('whereaboutReports',[]);
-    if(type==='favorite') return Storage.getHisFavorites?Storage.getHisFavorites():sget('hisFavorites',[]);
-    if(type==='purchase') return sget('rl7_partner_purchases_v1',[]) || [];
+    if(type==='whereabout')
+      return Storage.getWhereaboutReports?Storage.getWhereaboutReports():sget('whereaboutReports',[]);
+    if(type==='favorite')
+      return Storage.getHisFavorites?Storage.getHisFavorites():sget('hisFavorites',[]);
+    if(type==='purchase')
+      return sget('rl7_partner_purchases_v1',[]) || [];
+    if(type==='moments'){
+      /* momentsFeed_v1 is NOT an array; its real shape is {feed:[],nextId:n}. */
+      var mf=sget('momentsFeed_v1',null);
+      return mf&&Array.isArray(mf.feed)?mf.feed:[];
+    }
+    if(type==='mailbox'){
+      var exact=['mailboxLetters_v1','mailbox_v1','letters_v1'];
+      for(var i=0;i<exact.length;i++){
+        var v=sget(exact[i],null);
+        if(Array.isArray(v))return v;
+        if(v&&Array.isArray(v.items))return v.items;
+        if(v&&Array.isArray(v.letters))return v.letters;
+      }
+      return lsCandidates(['mailbox','letter','信箱']);
+    }
   }catch(e){}
-  if(type==='moments') return lsCandidates(['moment','朋友圈']);
-  if(type==='mailbox') return lsCandidates(['mailbox','letter','信箱']);
   return [];
 }
 function unread(type){
   return countAfter(source(type), Number(seen[type]||0));
 }
 function mark(type){
-  seen[type]=Math.max(now(),latestTime(source(type)));
+  var lt=latestTime(source(type));
+  seen[type]=lt || now();
   saveSeen(); renderBadges();
 }
 function badge(n){
@@ -132,6 +149,23 @@ function putParentDot(el,on){
 function renderBadges(){
   var home=document.getElementById('page-home');
   var discover=document.getElementById('page-discover');
+
+  /* v3 cleanup: remove ALL badges previously attached anywhere inside controlled
+     rows/icons. This also removes stale badges left by older patch versions. */
+  try{
+    if(home){
+      var hc=exactFeatureItem(home,['日常聊天']);
+      if(hc) hc.querySelectorAll('.rl7-unread-badge').forEach(function(x){x.remove()});
+    }
+    if(discover){
+      ['我的收藏','他的收藏','ta的收藏','他的购买','ta的购买','朋友圈','时空信箱','信箱','行踪汇报'].forEach(function(label){
+        var row=exactFeatureItem(discover,[label]);
+        if(row) row.querySelectorAll('.rl7-unread-badge').forEach(function(x){x.remove()});
+      });
+    }
+    document.querySelectorAll('.bottom-nav .rl7-unread-badge,.bottom-nav-item .rl7-unread-badge').forEach(function(x){x.remove()});
+  }catch(e){}
+
   var cu=chatUnread(), mo=unread('moments'), wa=unread('whereabout'),
       mb=unread('mailbox'), pu=unread('purchase'), fa=unread('favorite');
 
@@ -306,16 +340,46 @@ function patchSystemReplies(){
   }
 }
 
+
+/* ---------- Exact content-write hooks ----------
+   The unread system must react to the actual persistent write, not to a toast/log.
+   This catches background/free-will writes immediately. */
+function patchContentWriters(){
+  if(!window.Storage||Storage.__rl7UnreadWriterHooks)return;
+  Storage.__rl7UnreadWriterHooks=1;
+
+  if(typeof Storage.addWhereaboutReport==='function'){
+    var oldWA=Storage.addWhereaboutReport.bind(Storage);
+    Storage.addWhereaboutReport=function(report){
+      var r=oldWA(report);
+      setTimeout(renderBadges,0);
+      return r;
+    };
+  }
+
+  if(typeof Storage.set==='function'){
+    var oldSet=Storage.set.bind(Storage);
+    Storage.set=function(key,val){
+      var r=oldSet(key,val);
+      if(key==='momentsFeed_v1'||key==='rl7_partner_purchases_v1'||key==='whereaboutReports'||
+         /mailbox|letter/i.test(String(key))||/favorite/i.test(String(key))){
+        setTimeout(renderBadges,0);
+      }
+      return r;
+    };
+  }
+}
 /* Storage mutations can happen while the user is elsewhere; polling makes badge
    recovery deterministic after iOS wakes the PWA or background timers resume. */
 function boot(){
   patchNavigation();
   patchReplyTiming();
   patchSystemReplies();
+  patchContentWriters();
   bindStudyBounce();
   renderBadges();
   setInterval(function(){
-    patchNavigation();patchReplyTiming();patchSystemReplies();
+    patchNavigation();patchReplyTiming();patchSystemReplies();patchContentWriters();
     currentChatSeen();renderBadges();bindStudyBounce();
   },1200);
   document.addEventListener('visibilitychange',function(){if(!document.hidden){setTimeout(renderBadges,100)}});
