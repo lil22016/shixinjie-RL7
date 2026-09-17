@@ -35,3 +35,39 @@
   82%{translate:0 -3px;scale:1.006 .994}
   100%{translate:0 0;scale:1}
 }
+
+/* v2: badge is anchored to the actual small app icon */
+.discover-icon.rl7-badge-host,
+.feature-icon.rl7-badge-host,
+.home-feature-icon.rl7-badge-host,
+.menu-icon.rl7-badge-host,
+.item-icon.rl7-badge-host,
+.icon-wrap.rl7-badge-host,
+.app-icon.rl7-badge-host,
+.home-app-icon.rl7-badge-host,
+.nav-icon.rl7-badge-host,
+.bottom-nav-icon.rl7-badge-host{
+  position:relative!important;
+  overflow:visible!important;
+}
+.discover-icon > .rl7-unread-badge,
+.feature-icon > .rl7-unread-badge,
+.home-feature-icon > .rl7-unread-badge,
+.menu-icon > .rl7-unread-badge,
+.item-icon > .rl7-unread-badge,
+.icon-wrap > .rl7-unread-badge,
+.app-icon > .rl7-unread-badge,
+.home-app-icon > .rl7-unread-badge{
+  top:-5px!important;right:-6px!important;
+}
+.rl7-unread-badge.parent-dot{
+  min-width:10px!important;width:10px!important;height:10px!important;
+  padding:0!important;border-width:1.5px!important;
+  top:-2px!important;right:-3px!important;
+}
+
+#rl7-update-overlay{position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.rl7-update-card{width:min(330px,90vw);border-radius:22px;padding:22px;background:rgba(36,36,46,.94);border:1px solid rgba(255,255,255,.18);box-shadow:0 18px 60px rgba(0,0,0,.35);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+.rl7-update-title{font-size:19px;font-weight:700;margin-bottom:7px}.rl7-update-copy{font-size:14px;opacity:.72;line-height:1.45;margin-bottom:20px}
+.rl7-update-actions{display:flex;gap:10px;justify-content:flex-end}.rl7-update-actions button{border:0;border-radius:12px;padding:10px 16px;font:600 14px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+#rl7-update-later{background:rgba(255,255,255,.1);color:#fff}#rl7-update-now{background:#fff;color:#222}

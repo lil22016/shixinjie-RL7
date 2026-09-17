@@ -77,14 +77,24 @@ function putBadge(el,n){
   if(old)old.remove();
   if(n>0){el.classList.add('rl7-badge-host');el.appendChild(badge(n))}
 }
-function findByText(root, texts){
+function normText(s){return String(s||'').replace(/\s+/g,'').toLowerCase()}
+function exactFeatureItem(root,texts){
   if(!root)return null;
-  var els=root.querySelectorAll('div,button,a,.discover-item,.home-feature-item,.nav-item,.settings-item');
-  for(var i=0;i<els.length;i++){
-    var t=(els[i].textContent||'').replace(/\s+/g,'').toLowerCase();
-    if(texts.some(function(x){return t.indexOf(x.toLowerCase().replace(/\s+/g,''))>=0}))return els[i];
+  var candidates=root.querySelectorAll('.discover-item,.home-feature-item,.feature-item,.menu-item,.list-item,[onclick],[data-page]');
+  for(var i=0;i<candidates.length;i++){
+    var el=candidates[i], t=normText(el.textContent);
+    for(var j=0;j<texts.length;j++){
+      var q=normText(texts[j]);
+      if(t===q || t.indexOf(q)===0) return el;
+    }
   }
   return null;
+}
+function iconHost(item){
+  if(!item)return null;
+  return item.querySelector('.discover-icon,.feature-icon,.home-feature-icon,.menu-icon,.item-icon,.icon-wrap,.app-icon,.home-app-icon,.icon')
+      || item.querySelector('i')?.parentElement
+      || item;
 }
 function chatUnread(){
   var total=0;
@@ -100,28 +110,46 @@ function chatUnread(){
   }catch(e){}
   return total;
 }
+function findNavIcon(kind){
+  var navs=document.querySelectorAll('.bottom-nav .nav-item,.bottom-nav-item,.nav-item');
+  for(var i=0;i<navs.length;i++){
+    var el=navs[i], t=normText(el.textContent);
+    if((kind==='home' && /首页|主页/.test(t)) || (kind==='discover' && /发现/.test(t))){
+      return el.querySelector('.nav-icon,.bottom-nav-icon,.icon-wrap,.icon') || el.querySelector('i')?.parentElement || el;
+    }
+  }
+  return null;
+}
+function putParentDot(el,on){
+  if(!el)return;
+  var old=el.querySelector(':scope > .rl7-unread-badge');
+  if(old)old.remove();
+  if(on){
+    el.classList.add('rl7-badge-host');
+    var b=badge(11); b.classList.add('parent-dot'); el.appendChild(b);
+  }
+}
 function renderBadges(){
   var home=document.getElementById('page-home');
   var discover=document.getElementById('page-discover');
   var cu=chatUnread(), mo=unread('moments'), wa=unread('whereabout'),
       mb=unread('mailbox'), pu=unread('purchase'), fa=unread('favorite');
 
-  putBadge(findByText(home,['日常聊天']),cu);
-  putBadge(findByText(discover,['朋友圈']),mo);
-  putBadge(findByText(discover,['行踪汇报']),wa);
-  putBadge(findByText(discover,['信箱','时空信箱']),mb);
-  putBadge(findByText(discover,['购买','ta的购买','他的购买']),pu);
-  putBadge(findByText(discover,['ta的收藏','他的收藏']),fa);
+  /* badges belong to the small icon itself, never the whole row/card */
+  putBadge(iconHost(exactFeatureItem(home,['日常聊天'])),cu);
+  putBadge(iconHost(exactFeatureItem(discover,['朋友圈'])),mo);
+  putBadge(iconHost(exactFeatureItem(discover,['行踪汇报'])),wa);
+  putBadge(iconHost(exactFeatureItem(discover,['时空信箱','信箱'])),mb);
+  putBadge(iconHost(exactFeatureItem(discover,['他的购买','ta的购买'])),pu);
+  putBadge(iconHost(exactFeatureItem(discover,['他的收藏','ta的收藏'])),fa);
 
-  var navs=document.querySelectorAll('.bottom-nav .nav-item,.bottom-nav-item,.nav-item');
-  var homeNav=null, discNav=null;
-  navs.forEach(function(el){
-    var t=(el.textContent||'').replace(/\s+/g,'');
-    if(/首页|主页/.test(t))homeNav=homeNav||el;
-    if(/发现/.test(t))discNav=discNav||el;
-  });
-  putBadge(homeNav,cu);
-  putBadge(discNav,mo+wa+mb+pu+fa);
+  /* Explicitly remove any accidental badge from My Favorites. */
+  var mine=exactFeatureItem(discover,['我的收藏']);
+  if(mine) mine.querySelectorAll('.rl7-unread-badge').forEach(function(x){x.remove()});
+
+  /* Parent tabs are presence-only dots, not summed counters. */
+  putParentDot(findNavIcon('home'),cu>0);
+  putParentDot(findNavIcon('discover'),(mo+wa+mb+pu+fa)>0);
 }
 function currentChatSeen(){
   var room=document.getElementById('page-chat-room');
