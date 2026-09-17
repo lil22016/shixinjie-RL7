@@ -1,7 +1,7 @@
 /* RL7 release notice — deterministic once-per-release popup */
 (function(){
 'use strict';
-var RELEASE='20260916-unread4';
+var RELEASE='20260916-v6';
 var KEY='rl7_last_shown_release_v1';
 function show(){
   var old=document.getElementById('rl7-release-overlay'); if(old)old.remove();

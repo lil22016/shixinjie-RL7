@@ -1,5 +1,5 @@
-/* RL7 service worker — version 2026-09-16-unread-v4 */
-const RL7_SW_VERSION='2026-09-16-unread-v4';
+/* RL7 service worker — version 2026-09-16-v6 */
+const RL7_SW_VERSION='2026-09-16-v6';
 self.addEventListener('install',function(){});
 self.addEventListener('activate',function(event){
   event.waitUntil(self.clients.claim());

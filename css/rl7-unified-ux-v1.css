@@ -71,3 +71,28 @@
 .rl7-update-title{font-size:19px;font-weight:700;margin-bottom:7px}.rl7-update-copy{font-size:14px;opacity:.72;line-height:1.45;margin-bottom:20px}
 .rl7-update-actions{display:flex;gap:10px;justify-content:flex-end}.rl7-update-actions button{border:0;border-radius:12px;padding:10px 16px;font:600 14px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
 #rl7-update-later{background:rgba(255,255,255,.1);color:#fff}#rl7-update-now{background:#fff;color:#222}
+
+/* v6 whereabouts toolbar */
+.rl7-wa-tools{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 12px;color:var(--text-lighter);font-size:.78rem}
+.rl7-wa-clear-all{border:0;border-radius:999px;padding:7px 11px;background:rgba(255,80,80,.10);color:#d95b5b;font:inherit}
+.rl7-wa-order-note{text-align:center;padding:16px;color:var(--text-lighter);font-size:.75rem}
+
+/* v6 Moments comment: explicit readable palette in dark/gray themes */
+#moments-comment-input{
+  color:var(--text-main,#222)!important;
+  -webkit-text-fill-color:var(--text-main,#222)!important;
+  caret-color:var(--text-main,#222)!important;
+  background:var(--bg-card,rgba(255,255,255,.92))!important;
+}
+#moments-comment-input::placeholder{
+  color:var(--text-lighter,#888)!important;
+  -webkit-text-fill-color:var(--text-lighter,#888)!important;
+  opacity:1!important;
+}
+html[data-theme="dark"] #moments-comment-input,
+body[data-theme="dark"] #moments-comment-input,
+html.rl7-dark #moments-comment-input,
+body.rl7-dark #moments-comment-input{
+  color:#fff!important;-webkit-text-fill-color:#fff!important;caret-color:#fff!important;
+  background:rgba(255,255,255,.10)!important;
+}

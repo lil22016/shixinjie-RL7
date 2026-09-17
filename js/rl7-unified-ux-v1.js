@@ -82,6 +82,7 @@ function mark(type){
   seen[type]=lt || now();
   saveSeen(); renderBadges();
 }
+window.RL7UnreadMark=function(type){mark(type)};
 function badge(n){
   var b=document.createElement('span');
   b.className='rl7-unread-badge'+(n>10?' dot':'');
