@@ -113,3 +113,128 @@ setInterval(function(){installWhereaboutV6();bindMomentCommentInput()},1200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){installWhereaboutV6();bindMomentCommentInput()});
 else {installWhereaboutV6();bindMomentCommentInput()}
 })();
+
+/* ---------- Accounting reply source-boundary fix v2 ----------
+   account.js creates the Chinese reply synchronously inside accSave().
+   Wrap accSave itself, so the exact Storage.setMessages call made by
+   accPartnerComment is translated before it is persisted/rendered. */
+(function(){
+  'use strict';
+  if(window.__RL7_ACCOUNT_REPLY_V2__) return;
+  window.__RL7_ACCOUNT_REPLY_V2__=1;
+
+  function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+  function amt(rec){ return '¥' + Number(rec&&rec.amount||0).toFixed(2); }
+
+  var pools={
+    expLarge:[
+      "{A} gone in one move. Bold, darling.",
+      "You spent {A}? Very well. I’ll refrain from asking whether it was necessary.",
+      "{A}. You do have a talent for making money disappear elegantly.",
+      "That was {A}. Impressive. Slightly alarming, but impressive."
+    ],
+    expMid:[
+      "{A}. Reasonable enough. I’ll allow it.",
+      "{A}? Fine. I’ve seen you make far more questionable financial decisions.",
+      "Recorded: {A}. Try not to make this the beginning of a pattern.",
+      "Not disastrous. {A} is within the realm of acceptable mischief."
+    ],
+    expSmall:[
+      "Only {A}. How remarkably restrained of you.",
+      "{A}? Practically innocent. I’m almost disappointed.",
+      "Logged: {A}. Look at you, exercising financial self-control.",
+      "Only {A}. Very sensible. Suspiciously sensible, actually."
+    ],
+    incLarge:[
+      "{A} in. Much better. I prefer watching the number go this direction.",
+      "Now that is more like it. {A} added to the treasury.",
+      "{A} received. Excellent.",
+      "A {A} increase? Lovely. Our standards of living remain secure."
+    ],
+    incSmall:[
+      "{A} in. Small victories still count.",
+      "Another {A} for the treasury. I’ll take it.",
+      "{A} received. Modest, but respectable.",
+      "Income is income, darling. {A} duly noted."
+    ],
+    food:[
+      "Food again? Fair. Starvation would be terribly inconvenient.",
+      "Another culinary expense. I hope it was at least worth stealing a bite from."
+    ],
+    shopping:[
+      "Shopping. Of course. Should I even ask whether you needed it?",
+      "Another purchase? Your restraint continues to inspire absolutely no one."
+    ],
+    medical:[
+      "Health expenses are exempt from my commentary. Take care of yourself.",
+      "That one is necessary. No teasing—just look after yourself."
+    ],
+    salary:[
+      "Salary received. Excellent. The treasury approves.",
+      "Payday. Finally, a transaction I can wholeheartedly endorse."
+    ],
+    manage:[
+      "Investment income? Sensible. I’m impressed—don’t get used to hearing that.",
+      "Money making more money. Now that is a strategy worthy of me."
+    ]
+  };
+
+  function latestRecord(){
+    try{
+      var a=JSON.parse(localStorage.getItem('shixin_acc_records_v1')||'[]');
+      return a&&a.length?a[a.length-1]:null;
+    }catch(e){ return null; }
+  }
+  function english(rec){
+    var p, special=null, n=Number(rec&&rec.amount||0);
+    if(rec&&rec.type==='inc'){
+      p=n>=300?pools.incLarge:pools.incSmall;
+      if(rec.cat==='salary') special=pools.salary;
+      else if(rec.cat==='manage') special=pools.manage;
+    }else{
+      p=n>=500?pools.expLarge:(n>=100?pools.expMid:pools.expSmall);
+      if(rec&&rec.cat==='food') special=pools.food;
+      else if(rec&&rec.cat==='shopping') special=pools.shopping;
+      else if(rec&&rec.cat==='medical') special=pools.medical;
+    }
+    return pick((special&&Math.random()<.7)?special:p).replace(/\{A\}/g,amt(rec));
+  }
+
+  function install(){
+    if(typeof window.accSave!=='function' || !window.Storage || typeof Storage.setMessages!=='function') return false;
+    if(window.accSave.__rl7AccountReplyV2) return true;
+    var originalSave=window.accSave;
+    function wrappedSave(){
+      var originalSet=Storage.setMessages;
+      Storage.setMessages=function(chatId,msgs){
+        try{
+          var rec=latestRecord();
+          if(rec && Array.isArray(msgs) && msgs.length){
+            var i=msgs.length-1, m=msgs[i];
+            if(m && m.type!=='self' && typeof m.text==='string' && /[\u3400-\u9fff]/.test(m.text)){
+              var cp=msgs.slice(), cm=Object.assign({},m);
+              cm.text=english(rec);
+              cp[i]=cm;
+              msgs=cp;
+            }
+          }
+        }catch(e){}
+        return originalSet.call(Storage,chatId,msgs);
+      };
+      try{
+        return originalSave.apply(this,arguments);
+      }finally{
+        Storage.setMessages=originalSet;
+      }
+    }
+    wrappedSave.__rl7AccountReplyV2=1;
+    window.accSave=wrappedSave;
+    return true;
+  }
+
+  if(!install()){
+    var tries=0, timer=setInterval(function(){
+      if(install() || ++tries>40) clearInterval(timer);
+    },250);
+  }
+})();
