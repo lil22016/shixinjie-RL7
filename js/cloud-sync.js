@@ -1,203 +1,95 @@
-/* 拾心界 Cloud Transfer v2 — explicit, one-way bootstrap only */
-(function () {
+/* RL7 Live Cloud Sync v3 — safe live sync after explicit bootstrap */
+(function(){
 'use strict';
-
-var CFG={
-  url:'https://tncilkhksteqocbnqcrt.supabase.co',
-  key:'sb_publishable_fj5yqUMg3BLws3HoMY9MiQ_TcGXjHsS',
-  table:'user_sync'
-};
-var AUTH_KEY='__rl7_cloud_auth_v1';
-var BUSY=false;
-
-function parse(s,f){try{return JSON.parse(s)}catch(_){return f}}
-function auth(){return parse(localStorage.getItem(AUTH_KEY),null)}
-function saveAuth(v){
-  if(v&&v.expires_in&&!v.expires_at)v.expires_at=Math.floor(Date.now()/1000)+Number(v.expires_in);
-  localStorage.setItem(AUTH_KEY,JSON.stringify(v));
+const C={url:'https://tncilkhksteqocbnqcrt.supabase.co',key:'sb_publishable_fj5yqUMg3BLws3HoMY9MiQ_TcGXjHsS',table:'user_sync'};
+const A='__rl7_cloud_auth_v1', DEV='__rl7_cloud_device_v3', READY='__rl7_cloud_ready_v3';
+let busy=false,timer=null,lastSig='',applying=false;
+const j=(s,f)=>{try{return JSON.parse(s)}catch(_){return f}};
+const auth=()=>j(localStorage.getItem(A),null);
+function saveAuth(v){if(v&&v.expires_in&&!v.expires_at)v.expires_at=Math.floor(Date.now()/1000)+Number(v.expires_in);localStorage.setItem(A,JSON.stringify(v))}
+const uid=()=>auth()?.user?.id;
+function device(){let d=localStorage.getItem(DEV);if(!d){d=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());localStorage.setItem(DEV,d)}return d}
+function excluded(k){return !k||k===A||k===DEV||k===READY||k.startsWith('__rl7_cloud_')||k.startsWith('sb-')||k.toLowerCase().includes('supabase')}
+async function api(path,opt={}){let a=auth(),h=Object.assign({'apikey':C.key,'Content-Type':'application/json'},opt.headers||{});if(a?.access_token)h.Authorization='Bearer '+a.access_token;let r=await fetch(C.url+path,Object.assign({},opt,{headers:h})),t=await r.text(),d=t?j(t,t):null;if(!r.ok)throw Error((d&&(d.msg||d.message||d.error_description||d.error))||('HTTP '+r.status));return d}
+async function signin(email,password){let d=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});saveAuth(d);return d}
+async function ensure(){let a=auth();if(!a)return false;if(a.expires_at&&a.expires_at*1000<Date.now()+60000&&a.refresh_token){try{let d=await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:a.refresh_token})});saveAuth(d)}catch(_){return false}}return !!uid()}
+function idbAll(db,store){return new Promise((res,rej)=>{let q=indexedDB.open(db);q.onerror=()=>rej(q.error);q.onsuccess=()=>{let d=q.result;if(!d.objectStoreNames.contains(store)){d.close();return res([])}let tx=d.transaction(store,'readonly'),r=tx.objectStore(store).getAll();r.onsuccess=()=>{d.close();res(r.result||[])};r.onerror=()=>{d.close();rej(r.error)}}})}
+function idbPut(db,store,row){return new Promise((res,rej)=>{let q=indexedDB.open(db);q.onerror=()=>rej(q.error);q.onsuccess=()=>{let d=q.result;if(!d.objectStoreNames.contains(store)){d.close();return res()}let tx=d.transaction(store,'readwrite');tx.objectStore(store).put(row);tx.oncomplete=()=>{d.close();res()};tx.onerror=()=>{d.close();rej(tx.error)}}})}
+async function collect(){
+ let out={};
+ for(let i=0;i<localStorage.length;i++){let k=localStorage.key(i);if(!excluded(k))out['ls:'+k]={value:localStorage.getItem(k)}}
+ for(let r of await idbAll('mirror_app_kv_db','kv'))if(r?.key)out['kv:'+r.key]=r;
+ for(let r of await idbAll('mirror_message_db','messages'))if(r?.chatId)out['msg:'+r.chatId]=r;
+ for(let r of await idbAll('MirrorStickers','stickers'))if(r?.id!=null)out['sticker:'+r.id]=r;
+ for(let r of await idbAll('MirrorStickers','stickerCategories'))if(r?.id!=null)out['stickerCat:'+r.id]=r;
+ return out
 }
-function clearAuth(){localStorage.removeItem(AUTH_KEY)}
-function uid(){var a=auth();return a&&a.user&&a.user.id}
-function excluded(k){
-  return !k || k===AUTH_KEY || k.indexOf('__rl7_cloud_')===0 ||
-    k.indexOf('sb-')===0 || k.toLowerCase().indexOf('supabase')>=0;
+function stable(x){return JSON.stringify(x,Object.keys(x||{}).sort())}
+async function cloud(){return await api('/rest/v1/'+C.table+'?user_id=eq.'+encodeURIComponent(uid())+'&data_key=not.like.backup:%25&select=data_key,data,updated_at')}
+async function upsert(items){
+ if(!items.length)return;
+ for(let i=0;i<items.length;i+=30){
+   let body=items.slice(i,i+30).map(x=>({user_id:uid(),data_key:x.k,data:x.data,updated_at:x.at}));
+   await api('/rest/v1/'+C.table+'?on_conflict=user_id,data_key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})
+ }
 }
-async function api(path,opt){
-  opt=opt||{}; var a=auth();
-  var h=Object.assign({'apikey':CFG.key,'Content-Type':'application/json'},opt.headers||{});
-  if(a&&a.access_token)h.Authorization='Bearer '+a.access_token;
-  var r=await fetch(CFG.url+path,Object.assign({},opt,{headers:h}));
-  var txt=await r.text(), data=txt?parse(txt,txt):null;
-  if(!r.ok)throw new Error((data&&(data.msg||data.message||data.error_description||data.error))||('HTTP '+r.status));
-  return data;
+async function applyRow(r){
+ let k=r.data_key,d=r.data;
+ if(k.startsWith('ls:')){let n=k.slice(3);if(!excluded(n)&&d&&d.value!=null&&localStorage.getItem(n)!==String(d.value))localStorage.setItem(n,String(d.value))}
+ else if(k.startsWith('kv:'))await idbPut('mirror_app_kv_db','kv',d);
+ else if(k.startsWith('msg:'))await idbPut('mirror_message_db','messages',d);
+ else if(k.startsWith('sticker:'))await idbPut('MirrorStickers','stickers',d);
+ else if(k.startsWith('stickerCat:'))await idbPut('MirrorStickers','stickerCategories',d)
 }
-async function signIn(email,password){
-  var d=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:email,password:password})});
-  saveAuth(d); return d;
+async function liveSync(){
+ if(busy||applying||!localStorage.getItem(READY))return;
+ if(!await ensure())return;
+ busy=true;
+ try{
+   let loc=await collect(), cr=await cloud(), cm={};cr.forEach(r=>cm[r.data_key]=r);
+   // Never let empty/default local values erase a non-empty cloud value.
+   let pushes=[];
+   for(let [k,d] of Object.entries(loc)){
+     let r=cm[k], ls=JSON.stringify(d), cs=r?JSON.stringify(r.data):null;
+     if(ls===cs)continue;
+     let empty=(d==null)||(Array.isArray(d)&&!d.length)||(typeof d==='object'&&d&&!Array.isArray(d)&&Object.keys(d).length===0)||
+       (d&&typeof d.value==='string'&&(d.value==='[]'||d.value==='{}'||d.value===''||d.value==='null'));
+     if(r&&empty){applying=true;await applyRow(r);applying=false}
+     else pushes.push({k,data:d,at:new Date().toISOString()})
+   }
+   // Pull cloud keys missing locally. No deletions/tombstones in live mode.
+   for(let r of cr)if(!(r.data_key in loc)){applying=true;await applyRow(r);applying=false}
+   await upsert(pushes);
+   state('ok')
+ }catch(e){console.error('RL7 live sync',e);state('error')}
+ finally{busy=false}
 }
-async function refresh(){
-  var a=auth(); if(!a||!a.refresh_token)return false;
-  try{
-    var d=await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:a.refresh_token})});
-    saveAuth(d); return true;
-  }catch(e){return false}
-}
-async function ensureAuth(){
-  var a=auth(); if(!a)return false;
-  if(a.expires_at && a.expires_at*1000<Date.now()+60000)return await refresh();
-  return !!uid();
-}
-function idbAll(dbName,storeName){
-  return new Promise(function(resolve,reject){
-    var q=indexedDB.open(dbName);
-    q.onerror=function(){reject(q.error||new Error('Cannot open '+dbName))};
-    q.onsuccess=function(){
-      var db=q.result;
-      if(!db.objectStoreNames.contains(storeName)){db.close();return resolve([])}
-      var tx=db.transaction(storeName,'readonly'), req=tx.objectStore(storeName).getAll();
-      req.onsuccess=function(){db.close();resolve(req.result||[])};
-      req.onerror=function(){db.close();reject(req.error)}
-    };
-  });
-}
-function idbReplace(dbName,storeName,rows){
-  return new Promise(function(resolve,reject){
-    var q=indexedDB.open(dbName);
-    q.onerror=function(){reject(q.error||new Error('Cannot open '+dbName))};
-    q.onsuccess=function(){
-      var db=q.result;
-      if(!db.objectStoreNames.contains(storeName)){db.close();return resolve()}
-      var tx=db.transaction(storeName,'readwrite'), s=tx.objectStore(storeName);
-      s.clear();
-      (rows||[]).forEach(function(x){s.put(x)});
-      tx.oncomplete=function(){db.close();resolve()};
-      tx.onerror=function(){db.close();reject(tx.error)}
-    };
-  });
-}
-async function collectExact(){
-  var rows=[], stamp=Date.now();
-  for(var i=0;i<localStorage.length;i++){
-    var k=localStorage.key(i); if(excluded(k))continue;
-    rows.push({data_key:'ls:'+k,data:{value:localStorage.getItem(k)},updated_at:new Date(stamp).toISOString()});
-  }
-  var kv=await idbAll('mirror_app_kv_db','kv');
-  kv.forEach(function(r){if(r&&r.key)rows.push({data_key:'kv:'+r.key,data:r,updated_at:new Date(stamp).toISOString()})});
-  var msg=await idbAll('mirror_message_db','messages');
-  msg.forEach(function(r){if(r&&r.chatId)rows.push({data_key:'msg:'+r.chatId,data:r,updated_at:new Date(stamp).toISOString()})});
-  var st=await idbAll('MirrorStickers','stickers');
-  st.forEach(function(r){if(r&&r.id!=null)rows.push({data_key:'sticker:'+r.id,data:r,updated_at:new Date(stamp).toISOString()})});
-  var cat=await idbAll('MirrorStickers','stickerCategories');
-  cat.forEach(function(r){if(r&&r.id!=null)rows.push({data_key:'stickerCat:'+r.id,data:r,updated_at:new Date(stamp).toISOString()})});
-  return rows;
-}
-async function cloudRows(){
-  var u=uid(); if(!u)throw new Error('Not signed in');
-  return await api('/rest/v1/'+CFG.table+'?user_id=eq.'+encodeURIComponent(u)+'&data_key=not.like.backup:%25&select=data_key,data,updated_at');
-}
-async function deleteCloudWorkingSet(){
-  var u=uid();
-  await api('/rest/v1/'+CFG.table+'?user_id=eq.'+encodeURIComponent(u)+'&data_key=not.like.backup:%25',{
-    method:'DELETE',headers:{'Prefer':'return=minimal'}
-  });
-}
-async function upsertChunk(rows){
-  var u=uid();
-  var body=rows.map(function(r){return {user_id:u,data_key:r.data_key,data:r.data,updated_at:r.updated_at}});
-  await api('/rest/v1/'+CFG.table+'?on_conflict=user_id,data_key',{
-    method:'POST',
-    headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
-    body:JSON.stringify(body)
-  });
-}
-async function seedCloud(){
-  if(BUSY)return; BUSY=true; setState('syncing');
-  try{
-    if(!await ensureAuth())throw new Error('Please sign in again');
-    var rows=await collectExact();
-    if(!rows.length)throw new Error('No local data found. Nothing was uploaded.');
-    if(!confirm('Replace the cloud copy with THIS device’s current data?\n\nUse this only on the recovered original PWA.'))return;
-    await deleteCloudWorkingSet();
-    for(var i=0;i<rows.length;i+=40)await upsertChunk(rows.slice(i,i+40));
-    var check=await cloudRows();
-    if(check.length!==rows.length)throw new Error('Verification failed: uploaded '+check.length+' of '+rows.length+' records.');
-    toast('Cloud master copy created: '+rows.length+' records');
-    setState('ok');
-  }catch(e){console.error(e);toast('Upload failed: '+e.message);setState('error')}
-  finally{BUSY=false}
-}
-async function restoreFromCloud(){
-  if(BUSY)return; BUSY=true; setState('syncing');
-  try{
-    if(!await ensureAuth())throw new Error('Please sign in again');
-    var rows=await cloudRows();
-    if(!rows.length)throw new Error('Cloud master copy is empty. Restore stopped.');
-    if(!confirm('Replace THIS browser’s local data with the cloud master copy?\n\nUse this on Bluefy, not on the recovered original PWA.'))return;
-
-    var keep={}; for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(excluded(k))keep[k]=localStorage.getItem(k)}
-    var remove=[]; for(var j=0;j<localStorage.length;j++){var k2=localStorage.key(j);if(!excluded(k2))remove.push(k2)}
-    remove.forEach(function(k){localStorage.removeItem(k)});
-
-    var kv=[],msg=[],st=[],cat=[];
-    rows.forEach(function(r){
-      if(r.data_key.indexOf('ls:')===0){
-        var k=r.data_key.slice(3);
-        if(!excluded(k)&&r.data&&r.data.value!==undefined&&r.data.value!==null)localStorage.setItem(k,String(r.data.value));
-      }else if(r.data_key.indexOf('kv:')===0)kv.push(r.data);
-      else if(r.data_key.indexOf('msg:')===0)msg.push(r.data);
-      else if(r.data_key.indexOf('sticker:')===0)st.push(r.data);
-      else if(r.data_key.indexOf('stickerCat:')===0)cat.push(r.data);
-    });
-    await idbReplace('mirror_app_kv_db','kv',kv);
-    await idbReplace('mirror_message_db','messages',msg);
-    await idbReplace('MirrorStickers','stickers',st);
-    await idbReplace('MirrorStickers','stickerCategories',cat);
-    Object.keys(keep).forEach(function(k){localStorage.setItem(k,keep[k])});
-    toast('Restore complete: '+rows.length+' records. Reloading…');
-    setState('ok'); setTimeout(function(){location.reload()},1400);
-  }catch(e){console.error(e);toast('Restore failed: '+e.message);setState('error')}
-  finally{BUSY=false}
-}
-function toast(s){
-  var x=document.createElement('div');x.className='rl7-cloud-toast';x.textContent=s;document.body.appendChild(x);
-  setTimeout(function(){x.remove()},3500)
-}
-function setState(s){var b=document.getElementById('rl7-cloud-btn');if(b)b.dataset.state=s}
+function schedule(ms=700){clearTimeout(timer);timer=setTimeout(liveSync,ms)}
+function enable(){localStorage.setItem(READY,'1');schedule(50);toast('Live sync enabled')}
+function disable(){localStorage.removeItem(READY);toast('Live sync paused')}
+function toast(s){let x=document.createElement('div');x.className='rl7-cloud-toast';x.textContent=s;document.body.appendChild(x);setTimeout(()=>x.remove(),2600)}
+function state(s){let b=document.getElementById('rl7-cloud-btn');if(b)b.dataset.state=s}
 function modal(){
-  var old=document.getElementById('rl7-cloud-modal');if(old)old.remove();
-  var signed=!!uid(),d=document.createElement('div');d.id='rl7-cloud-modal';d.className='rl7-cloud-overlay';
-  d.innerHTML='<div class="rl7-cloud-card"><button class="rl7-cloud-x">×</button><div class="rl7-cloud-title">Cloud Transfer</div>'+
-  (signed?
-   '<div class="rl7-cloud-sub">Signed in. Nothing syncs automatically.</div>'+
-   '<button id="rl7-seed" class="rl7-cloud-primary">① This PWA → Replace Cloud</button>'+
-   '<button id="rl7-restore" class="rl7-cloud-secondary">② Cloud → Restore This Browser</button>'+
-   '<button id="rl7-signout" class="rl7-cloud-ghost">Sign out</button>':
-   '<div class="rl7-cloud-sub">Sign in with the same Supabase account you already created.</div>'+
-   '<input id="rl7-email" type="email" placeholder="Email"><input id="rl7-pass" type="password" placeholder="Password">'+
-   '<button id="rl7-signin" class="rl7-cloud-primary">Sign in</button>')+
-   '<div class="rl7-cloud-note">Safety mode: manual one-way transfer only. No automatic pull, push, merge, timer, or background sync.</div></div>';
-  document.body.appendChild(d);
-  d.querySelector('.rl7-cloud-x').onclick=function(){d.remove()};
-  d.onclick=function(e){if(e.target===d)d.remove()};
-  if(signed){
-    d.querySelector('#rl7-seed').onclick=seedCloud;
-    d.querySelector('#rl7-restore').onclick=restoreFromCloud;
-    d.querySelector('#rl7-signout').onclick=function(){clearAuth();d.remove();toast('Signed out')};
-  }else{
-    d.querySelector('#rl7-signin').onclick=async function(){
-      var e=d.querySelector('#rl7-email').value.trim(),p=d.querySelector('#rl7-pass').value;
-      if(!e||p.length<6){toast('Enter your email and password');return}
-      try{await signIn(e,p);d.remove();modal()}catch(err){toast(err.message)}
-    };
-  }
+ document.getElementById('rl7-cloud-modal')?.remove();let d=document.createElement('div');d.id='rl7-cloud-modal';d.className='rl7-cloud-overlay';
+ let signed=!!uid(),on=!!localStorage.getItem(READY);
+ d.innerHTML='<div class="rl7-cloud-card"><button class="rl7-cloud-x">×</button><div class="rl7-cloud-title">Cloud Sync</div>'+
+ (signed?'<div class="rl7-cloud-sub">'+(on?'Live sync is ON':'Live sync is paused')+'</div><button id="rl7-toggle" class="rl7-cloud-primary">'+(on?'Pause live sync':'Enable live sync')+'</button><button id="rl7-now" class="rl7-cloud-secondary">Sync now</button>':
+ '<div class="rl7-cloud-sub">Sign in with the same account on PWA and Bluefy.</div><input id="rl7-email" type="email" placeholder="Email"><input id="rl7-pass" type="password" placeholder="Password"><button id="rl7-signin" class="rl7-cloud-primary">Sign in</button>')+
+ '<div class="rl7-cloud-note">Changes sync within about 1 second while the page is active, plus every 5 seconds as a safety check. Empty/default data cannot overwrite existing non-empty cloud data. Live sync does not propagate deletions.</div></div>';
+ document.body.appendChild(d);d.querySelector('.rl7-cloud-x').onclick=()=>d.remove();
+ if(signed){d.querySelector('#rl7-toggle').onclick=()=>{on?disable():enable();d.remove()};d.querySelector('#rl7-now').onclick=()=>{schedule(0);d.remove()}}
+ else d.querySelector('#rl7-signin').onclick=async()=>{try{await signin(d.querySelector('#rl7-email').value.trim(),d.querySelector('#rl7-pass').value);d.remove();modal()}catch(e){toast(e.message)}}
 }
 function boot(){
-  if(!document.getElementById('rl7-cloud-css')){
-    var l=document.createElement('link');l.id='rl7-cloud-css';l.rel='stylesheet';l.href='css/cloud-sync.css?v=20260917safe2';document.head.appendChild(l)
-  }
-  var b=document.createElement('button');b.id='rl7-cloud-btn';b.className='rl7-cloud-btn';b.type='button';b.textContent='☁';b.onclick=modal;
-  document.body.appendChild(b);setState(uid()?'ok':'off');
+ if(!document.getElementById('rl7-cloud-css')){let l=document.createElement('link');l.id='rl7-cloud-css';l.rel='stylesheet';l.href='css/cloud-sync.css?v=20260917live3';document.head.appendChild(l)}
+ if(!document.getElementById('rl7-cloud-btn')){let b=document.createElement('button');b.id='rl7-cloud-btn';b.className='rl7-cloud-btn';b.textContent='☁';b.onclick=modal;document.body.appendChild(b)}
+ // Watch localStorage writes.
+ try{let sp=Storage.prototype,ss=sp.setItem,sr=sp.removeItem;sp.setItem=function(k,v){let z=ss.apply(this,arguments);if(!applying&&!excluded(String(k)))schedule();return z};sp.removeItem=function(k){let z=sr.apply(this,arguments);if(!applying&&!excluded(String(k)))schedule();return z}}catch(_){}
+ // IDB/message changes are caught by frequent snapshot comparison.
+ setInterval(()=>{if(document.visibilityState==='visible')schedule(0)},5000);
+ addEventListener('online',()=>schedule(100));document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')schedule(100)});
+ if(localStorage.getItem(READY))schedule(300);state(uid()?'ok':'off')
 }
-window.RL7CloudSync={seedCloud:seedCloud,restoreFromCloud:restoreFromCloud,signIn:signIn,signOut:clearAuth,config:CFG};
+window.RL7CloudSync={syncNow:liveSync,enable,disable,signIn:signin};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
