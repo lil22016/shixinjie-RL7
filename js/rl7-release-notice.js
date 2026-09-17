@@ -2,8 +2,8 @@
 (function(){
 'use strict';
 
-var RELEASE='20260917-v13';
-var RELEASE_KEY='rl7_release_ack_20260917_v13';
+var RELEASE='20260917-v14';
+var RELEASE_KEY='rl7_release_ack_20260917_v14';
 var DREAM_DT_KEY='rl7_dream_datetime_v1';
 
 function pad(n){return String(n).padStart(2,'0');}
@@ -73,12 +73,24 @@ function installStyle(){
     #page-home .home-feature-item{position:relative!important;z-index:243!important;overflow:visible!important}
     #page-home .home-feature-icon,#page-home .home-feature-label{position:relative!important;z-index:244!important;overflow:visible!important}
     #page-home .home-feature-label{display:block!important;visibility:visible!important;opacity:1!important}
+    /* v14: fit the lower home stack back into the viewport. */
     #page-home .rl7-home-companion-widget{
       position:relative!important;
-      transform:translateY(18px)!important;
+      transform:translateY(4px)!important;
+      margin-top:8px!important;
+      margin-bottom:0!important;
     }
     #page-home #app-swipe-wrapper.home-widgets-wrap{
-      transform:translateY(18px)!important;
+      transform:none!important;
+      padding-top:48px!important;
+      padding-bottom:calc(104px + var(--safe-bottom))!important;
+    }
+    /* Move only the connection label upward; ECG stays exactly where it is. */
+    #page-home .connection-status,
+    #page-home .connection-text,
+    #page-home #connection-status{
+      position:relative!important;
+      transform:translateY(-8px)!important;
     }
 
     /* The old standalone date is removed from layout. */
@@ -237,7 +249,7 @@ function bind(){
 function showRelease(){
   if(document.getElementById('rl7-release-overlay'))return;
   var ov=document.createElement('div');ov.id='rl7-release-overlay';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
-  ov.innerHTML='<div class="rl7-update-card"><div class="rl7-update-title">Updated</div><div class="rl7-update-copy">Home vertical spacing has been corrected so long quotes no longer overlap the clocks.</div><div class="rl7-update-actions"><button id="rl7-release-ok" type="button">OK</button></div></div>';
+  ov.innerHTML='<div class="rl7-update-card"><div class="rl7-update-title">Updated</div><div class="rl7-update-copy">Home spacing is rebalanced so every element fits above the fixed navigation without overlap.</div><div class="rl7-update-actions"><button id="rl7-release-ok" type="button">OK</button></div></div>';
   document.body.appendChild(ov);
   var ok=document.getElementById('rl7-release-ok');
   if(ok)ok.onclick=function(){try{localStorage.setItem(RELEASE_KEY,RELEASE)}catch(e){}ov.remove();};
@@ -255,4 +267,18 @@ function boot(){
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+
+(function(){
+  var st=document.createElement('style');
+  st.id='rl7-v14-fit';
+  st.textContent=`
+    #page-home .home-feature-grid{row-gap:24px!important}
+    @media (max-height:760px){
+      #page-home #app-swipe-wrapper.home-widgets-wrap{padding-top:38px!important}
+      #page-home .home-feature-grid{row-gap:20px!important}
+      #page-home .rl7-home-companion-widget{margin-top:4px!important}
+    }
+  `;
+  document.head.appendChild(st);
 })();
