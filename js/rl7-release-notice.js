@@ -2,8 +2,8 @@
 (function(){
 'use strict';
 
-var RELEASE='20260917-v12';
-var RELEASE_KEY='rl7_release_ack_20260917_v12';
+var RELEASE='20260917-v13';
+var RELEASE_KEY='rl7_release_ack_20260917_v13';
 var DREAM_DT_KEY='rl7_dream_datetime_v1';
 
 function pad(n){return String(n).padStart(2,'0');}
@@ -73,9 +73,38 @@ function installStyle(){
     #page-home .home-feature-item{position:relative!important;z-index:243!important;overflow:visible!important}
     #page-home .home-feature-icon,#page-home .home-feature-label{position:relative!important;z-index:244!important;overflow:visible!important}
     #page-home .home-feature-label{display:block!important;visibility:visible!important;opacity:1!important}
+    #page-home .rl7-home-companion-widget{
+      position:relative!important;
+      transform:translateY(18px)!important;
+    }
+    #page-home #app-swipe-wrapper.home-widgets-wrap{
+      transform:translateY(18px)!important;
+    }
 
-    /* The old standalone date is removed from layout, so long quotes cannot collide with it. */
+    /* The old standalone date is removed from layout. */
     #page-home .home-greeting-row{display:none!important}
+
+    /*
+      v13 vertical-flow fix:
+      The quote can wrap to 2+ lines. It must own its real height instead of letting
+      the clock stack paint into the same vertical space.
+    */
+    #page-home .home-quote{
+      position:relative!important;
+      height:auto!important;
+      min-height:42px!important;
+      max-height:none!important;
+      overflow:visible!important;
+      flex:0 0 auto!important;
+      box-sizing:border-box!important;
+      margin-bottom:24px!important;
+      padding-bottom:0!important;
+    }
+    #page-home .dual-time-bar{
+      position:relative!important;
+      flex:0 0 auto!important;
+      margin-top:0!important;
+    }
 
     /* Dates now belong to their respective clock cards. */
     #page-home .time-card{box-sizing:border-box!important}
@@ -208,7 +237,7 @@ function bind(){
 function showRelease(){
   if(document.getElementById('rl7-release-overlay'))return;
   var ov=document.createElement('div');ov.id='rl7-release-overlay';ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
-  ov.innerHTML='<div class="rl7-update-card"><div class="rl7-update-title">Updated</div><div class="rl7-update-copy">Dates are now clearer, clock cards are back to their compact layout, and redundant adjustment hints are removed.</div><div class="rl7-update-actions"><button id="rl7-release-ok" type="button">OK</button></div></div>';
+  ov.innerHTML='<div class="rl7-update-card"><div class="rl7-update-title">Updated</div><div class="rl7-update-copy">Home vertical spacing has been corrected so long quotes no longer overlap the clocks.</div><div class="rl7-update-actions"><button id="rl7-release-ok" type="button">OK</button></div></div>';
   document.body.appendChild(ov);
   var ok=document.getElementById('rl7-release-ok');
   if(ok)ok.onclick=function(){try{localStorage.setItem(RELEASE_KEY,RELEASE)}catch(e){}ov.remove();};
