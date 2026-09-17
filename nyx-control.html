@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#4FA8E8">
+  <title>Nyx Control</title>
+  <link rel="stylesheet" href="css/nyx-control.css?v=1">
+</head>
+<body>
+  <main class="nyx-shell">
+    <header class="nyx-header">
+      <button class="back-btn" onclick="history.back()" aria-label="返回">‹</button>
+      <div>
+        <div class="eyebrow">BLE DEVICE</div>
+        <h1>Nyx Control</h1>
+      </div>
+      <span id="statusDot" class="status-dot"></span>
+    </header>
+
+    <section class="card status-card">
+      <div class="row">
+        <div>
+          <div class="label">Connection</div>
+          <div id="connectionText" class="value">Not connected</div>
+        </div>
+        <button id="connectBtn" class="primary-btn">Connect Nyx</button>
+      </div>
+      <div id="browserWarning" class="warning hidden">
+        当前浏览器没有 Web Bluetooth。iPhone 上请用 Bluefy 打开这个网页。
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">Manual intensity</div>
+      <div class="intensity-readout"><span id="intensityValue">0</span><small>%</small></div>
+      <input id="intensitySlider" type="range" min="0" max="100" value="0" step="1">
+      <div class="preset-grid">
+        <button data-level="0">0</button>
+        <button data-level="10">10</button>
+        <button data-level="25">25</button>
+        <button data-level="50">50</button>
+        <button data-level="75">75</button>
+        <button data-level="100">100</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">Random control</div>
+      <div class="random-info">
+        <span>Current</span>
+        <strong id="randomCurrent">0%</strong>
+      </div>
+      <div class="random-info">
+        <span>Next change</span>
+        <strong id="nextChange">—</strong>
+      </div>
+
+      <div class="probability-box">
+        <div><span>0–20</span><b>20%</b></div>
+        <div><span>21–50</span><b>35%</b></div>
+        <div><span>51–80</span><b>30%</b></div>
+        <div><span>81–100</span><b>15%</b></div>
+      </div>
+
+      <div class="action-grid">
+        <button id="startRandomBtn" class="primary-btn">Start random</button>
+        <button id="stopBtn" class="secondary-btn">Stop</button>
+      </div>
+    </section>
+
+    <section class="card small-card">
+      <div class="section-title">Device protocol</div>
+      <code>Magic Motion v4 · nyx</code>
+    </section>
+  </main>
+
+  <script src="js/nyx-control.js?v=1"></script>
+</body>
+</html>
