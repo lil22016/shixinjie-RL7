@@ -1,69 +1,15 @@
-(() => {
-'use strict';
-const SERVICE_UUID='78667579-7b48-43db-b8c5-7928a6b0a335',TX_UUID='78667579-a914-49a4-8333-aa3c0cd8fedc';
-let device=null,characteristic=null,randomTimer=null,current=0;
-const $=id=>document.getElementById(id), slider=$('intensitySlider'), readout=$('intensityValue'), logEl=$('activityLog');
-let speechTimer=null,lastSpeechAt=0;
-function speech(text){if(!text)return;let el=document.getElementById('nyxSpeech');if(!el){el=document.createElement('div');el.id='nyxSpeech';el.className='nyx-speech';document.body.appendChild(el)}el.textContent=text;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');clearTimeout(speechTimer);let ms=Math.max(4200,Math.min(9000,2200+text.length*75));speechTimer=setTimeout(()=>el.classList.remove('show'),ms);lastSpeechAt=Date.now()}
-function card(key){return window.NyxCards&&NyxCards.get?NyxCards.get(key):''}
-function intensityCard(v){return window.NyxCards&&NyxCards.keyForIntensity?card(NyxCards.keyForIntensity(v)):''}
-const pick=a=>a[Math.floor(Math.random()*a.length)];
-const lines={
-upSuccess:["Fine. Since you're asking so nicely.","Greedy thing. I’ll allow it.","You wanted more. Don’t complain now.","Mm. That’s more like it."],
-upFail:["No. You don’t get to rush me.","Cute attempt. My turn.","Did you really think I’d let you decide that?","Impatient. I noticed."],
-downSuccess:["I suppose I can be merciful. Briefly.","Fine. Catch your breath.","There. Don’t get used to my generosity.","I’ll let you have that one."],
-downFail:["Not yet.","Trying to escape my settings? Adorable.","No, darling. Stay exactly where I put you.","You can ask. I never said I had to listen."],
-stopSuccess:["Fine. We’re done—for now.","Mercy granted. Try not to look too relieved.","All right. I’ll stop."],
-stopFail:["Oh, absolutely not.","Nice try. I’m not finished.","You said stop. I heard you. I simply disagree."]
-};
-function stamp(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
-function addLog(text,cls=''){let d=document.createElement('div');d.className='log-entry '+cls;d.innerHTML='<span class="log-time">'+stamp()+'</span>'+text;logEl.prepend(d);}
-function setUI(v){current=v;slider.value=v;readout.textContent=v;}
-function build(v){v=Math.max(0,Math.min(100,Math.round(+v||0)));return new Uint8Array([0x10,0xff,0x04,0x0a,0x32,0x32,0x00,0x04,0x08,v,0x64,0x00,0x04,0x08,v,0x64,0x01]);}
-async function rawWrite(v){if(!characteristic)throw Error('Nyx is not connected');let data=build(v);if(typeof characteristic.writeValueWithoutResponse==='function')await characteristic.writeValueWithoutResponse(data);else await characteristic.writeValue(data);setUI(v);}
-function setConnected(on){$('statusDot').classList.toggle('connected',on);$('connectionText').textContent=on?(device?.name||'Connected'):'Offline';$('connectBtn').textContent=on?'Connected':'Connect Nyx';}
-async function connect(){if(!navigator.bluetooth){$('browserWarning').classList.remove('hidden');return;}try{$('connectBtn').disabled=true;$('connectBtn').textContent='Connecting…';device=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'nyx'}],optionalServices:[SERVICE_UUID]});device.addEventListener('gattserverdisconnected',()=>{characteristic=null;clearTimeout(randomTimer);setConnected(false);addLog('Nyx disconnected.','fail');});let s=await device.gatt.connect(),svc=await s.getPrimaryService(SERVICE_UUID);characteristic=await svc.getCharacteristic(TX_UUID);setConnected(true);addLog('Nyx connected. Loki has the controls.','loki');startLokiControl();}catch(e){setConnected(false);addLog('Connection failed: '+(e.message||e),'fail');}finally{$('connectBtn').disabled=false;}}
-function weighted(){let r=Math.random(),a,b;if(r<.20)[a,b]=[0,20];else if(r<.55)[a,b]=[21,50];else if(r<.85)[a,b]=[51,80];else[a,b]=[81,100];return Math.floor(Math.random()*(b-a+1))+a;}
-function delay(){return 2600+Math.floor(Math.random()*6001);}
-async function lokiMove(){if(!characteristic)return;let v=weighted();try{await rawWrite(v);addLog('Loki turned the intensity to <b>'+v+'%</b>.','loki');if(Date.now()-lastSpeechAt>22000)speech(intensityCard(v));}catch(e){addLog('Loki tried to change the intensity. Device write failed.','fail');return;}randomTimer=setTimeout(lokiMove,delay());}
-function startLokiControl(){clearTimeout(randomTimer);randomTimer=setTimeout(lokiMove,900);}
-function allowAttempt(from,to){let dir=to===0?'stop':to>from?'up':'down';let successChance=dir==='up'?.64:dir==='down'?.48:.32;return {dir,ok:Math.random()<successChance};}
-async function userAttempt(target){target=Math.max(0,Math.min(100,Math.round(+target||0)));if(!characteristic){setUI(current);addLog('Raylee tried to change the intensity, but Nyx is not connected.','fail');return;}let from=current;if(target===from)return;clearTimeout(randomTimer);let a=allowAttempt(from,target);addLog('Raylee tried to turn the intensity to <b>'+target+'%</b>.');if(!a.ok){
-setUI(from);
-let key=a.dir==='up'?'upFail':a.dir==='down'?'downFail':'stopFail';
-let say=card('fail-'+a.dir)||pick(lines[key]);
-addLog('“'+say+'” — Loki','loki fail');speech(say);
-let bonusChance=a.dir==='stop'?.22:a.dir==='down'?.18:.10;
-if(Math.random()<bonusChance){
-  setTimeout(async()=>{
-    if(!characteristic)return;
-    /* Programmatic control is continuous across the full protocol range:
-       any integer 0–100 can be generated; preset buttons are NOT used here. */
-    let bonus;
-    if(a.dir==='stop'||a.dir==='down'){
-      let floor=Math.min(100,Math.max(from+5,55));
-      bonus=floor+Math.floor(Math.random()*(101-floor));
-    }else{
-      bonus=Math.floor(Math.random()*101);
-    }
-    try{
-      await rawWrite(bonus);
-      let bs=card('bonus')||'Actually, I have a better idea.';
-      addLog('<b>Refusal event.</b> Loki changed the intensity to <b>'+bonus+'%</b>.','loki');
-      addLog('“'+bs+'” — Loki','loki');speech(bs);
-    }catch(e){addLog('Refusal event failed at the device.','fail');}
-    randomTimer=setTimeout(lokiMove,delay());
-  },1100);
-}else{
-  randomTimer=setTimeout(lokiMove,delay());
-}
-return;}try{await rawWrite(target);let key=a.dir==='up'?'upSuccess':a.dir==='down'?'downSuccess':'stopSuccess';addLog('Loki allowed it. Intensity changed to <b>'+target+'%</b>.','loki');let say=card('success-'+a.dir)||pick(lines[key]);addLog('“'+say+'” — Loki','loki');speech(say);}catch(e){setUI(from);addLog('Change failed at the device.','fail');}randomTimer=setTimeout(lokiMove,delay());}
-$('connectBtn').addEventListener('click',connect);
-slider.addEventListener('input',()=>{readout.textContent=slider.value;});
-slider.addEventListener('change',()=>userAttempt(slider.value));
-document.querySelectorAll('[data-level]').forEach(b=>b.addEventListener('click',()=>userAttempt(b.dataset.level)));
-window.addEventListener('pagehide',()=>clearTimeout(randomTimer));
-addLog('Private Frequency ready. Waiting for Nyx.');
-if(!navigator.bluetooth)$('browserWarning').classList.remove('hidden');
+(()=>{'use strict';
+const S='78667579-7b48-43db-b8c5-7928a6b0a335',T='78667579-a914-49a4-8333-aa3c0cd8fedc';let dev=null,ch=null,timer=null,cur=0,running=false,cd=null,spt=null,lastLine=0,nextLineMove=1;
+const $=x=>document.getElementById(x),sl=$('intensitySlider'),ro=$('intensityValue'),log=$('activityLog'),pick=a=>a[Math.floor(Math.random()*a.length)];
+const fb={'0-10':['Easy. I barely started.','That little? You’re being cautious.'],'11-25':['There you are. Paying attention now?','Still comfortable? How disappointing.'],'26-50':['Mm. That got your attention.','Don’t look at me like that. You agreed to this.'],'51-75':["Getting difficult to ignore me, isn't it?",'Good. Stay right there.'],'76-99':["Now we're getting somewhere.","Careful, darling. I might decide I like this setting."],'100':['There. No more pretending you can ignore me.','One hundred. Brave choice.']};
+const L={upSuccess:["Fine. Since you're asking so nicely.","Greedy thing. I’ll allow it.","You wanted more. Don’t complain now.","Mm. That’s more like it."],upFail:["No. You don’t get to rush me.","Cute attempt. My turn.","Impatient. I noticed."],downSuccess:["I suppose I can be merciful. Briefly.","Fine. Catch your breath.","I’ll let you have that one."],downFail:["Not yet.","Trying to escape my settings? Adorable.","You can ask. I never said I had to listen."],stopSuccess:["Fine. We’re done—for now.","Mercy granted. Try not to look too relieved.","All right. I’ll stop."],stopFail:["Oh, absolutely not.","Nice try. I’m not finished.","You said stop. I heard you. I simply disagree."],bonus:["Actually, I have a better idea.","Trying to negotiate? Wrong move.","You wanted my attention. You have it."]};
+function key(v){return v<=10?'0-10':v<=25?'11-25':v<=50?'26-50':v<=75?'51-75':v<100?'76-99':'100'}function card(k){try{return window.NyxCards&&NyxCards.get?NyxCards.get(k):''}catch(e){return''}}function say(x){if(!x)return;let e=$('nyxSpeech');if(!e){e=document.createElement('div');e.id='nyxSpeech';e.className='nyx-speech';document.body.appendChild(e)}e.textContent=x;e.classList.remove('show');void e.offsetWidth;e.classList.add('show');clearTimeout(spt);spt=setTimeout(()=>e.classList.remove('show'),Math.max(4200,Math.min(9000,2200+x.length*75)))}function stamp(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}function add(x,c=''){let d=document.createElement('div');d.className='log-entry '+c;d.innerHTML='<span class="log-time">'+stamp()+'</span>'+x;log.prepend(d)}function ui(v){cur=v;sl.value=v;ro.textContent=v}function packet(v){v=Math.max(0,Math.min(100,Math.round(+v||0)));return new Uint8Array([16,255,4,10,50,50,0,4,8,v,100,0,4,8,v,100,1])}async function write(v){if(!ch)throw Error('not connected');let d=packet(v);if(ch.writeValueWithoutResponse)await ch.writeValueWithoutResponse(d);else await ch.writeValue(d);ui(v)}
+function buttons(){let a=$('startBtn'),b=$('stopBtn');a.disabled=!ch||running;b.disabled=!ch||!running;a.textContent=running?'Running':'Start'}function connected(x){$('statusDot').classList.toggle('connected',x);$('connectionText').textContent=x?(dev?.name||'Connected'):'Offline';$('connectBtn').textContent=x?'Connected':'Connect Nyx';buttons()}
+function weighted(){let r=Math.random(),a,b;if(r<.2)[a,b]=[0,20];else if(r<.55)[a,b]=[21,50];else if(r<.85)[a,b]=[51,80];else[a,b]=[81,100];return a+Math.floor(Math.random()*(b-a+1))}function delay(){return 2600+Math.floor(Math.random()*6001)}function resetCycle(){lastLine=Date.now();nextLineMove=1+Math.floor(Math.random()*3)}function intensityLine(v){if(Date.now()-lastLine<30000)return;if(--nextLineMove<=0){let x=card(key(v))||pick(fb[key(v)]);say(x);add('“'+x+'” — Loki','loki');resetCycle()}}function schedule(ms=delay()){clearTimeout(timer);if(running)timer=setTimeout(move,ms)}async function move(){if(!ch||!running)return;let v=weighted();try{await write(v);add('Loki turned the intensity to <b>'+v+'%</b>.','loki');intensityLine(v)}catch(e){add('Device write failed.','fail');return}schedule()}
+function attempt(from,to){let d=to===0?'stop':to>from?'up':'down',p=d==='up'?.64:d==='down'?.48:.32;return{dir:d,ok:Math.random()<p}}async function refused(from,a){ui(from);let k=a.dir==='up'?'upFail':a.dir==='down'?'downFail':'stopFail',x=card('fail-'+a.dir)||pick(L[k]);add('“'+x+'” — Loki','loki fail');say(x);let p=a.dir==='stop'?.22:a.dir==='down'?.18:.10;if(Math.random()<p)setTimeout(async()=>{if(!ch)return;let b;if(a.dir==='stop'||a.dir==='down'){let f=Math.min(100,Math.max(from+5,55));b=f+Math.floor(Math.random()*(101-f))}else b=Math.floor(Math.random()*101);try{await write(b);let q=card('bonus')||pick(L.bonus);add('<b>Refusal event.</b> Loki changed the intensity to <b>'+b+'%</b>.','loki');add('“'+q+'” — Loki','loki');say(q)}catch(e){add('Refusal event failed.','fail')}schedule()},1100);else schedule()}
+async function user(to){to=Math.max(0,Math.min(100,Math.round(+to||0)));if(!ch){ui(cur);add('Nyx is not connected.','fail');return}let from=cur;if(to===from)return;clearTimeout(timer);let a=attempt(from,to);add('Raylee tried to turn the intensity to <b>'+to+'%</b>.');if(!a.ok)return refused(from,a);try{await write(to);let k=a.dir==='up'?'upSuccess':a.dir==='down'?'downSuccess':'stopSuccess',x=card('success-'+a.dir)||pick(L[k]);add('Loki allowed it. Intensity changed to <b>'+to+'%</b>.','loki');add('“'+x+'” — Loki','loki');say(x)}catch(e){ui(from);add('Change failed.','fail')}schedule()}
+async function stop(){if(!ch||!running)return;let from=cur;clearTimeout(timer);add('Raylee requested to stop.');let a={dir:'stop',ok:Math.random()<.32};if(!a.ok)return refused(from,a);try{await write(0);running=false;buttons();let x=card('success-stop')||pick(L.stopSuccess);add('Loki allowed it. Private Frequency stopped.','loki');add('“'+x+'” — Loki','loki');say(x)}catch(e){ui(from);add('Stop failed.','fail');schedule()}}
+function start(){if(!ch||running)return;clearTimeout(timer);let n=3,o=$('countdownOverlay'),z=$('countdownNumber');o.classList.add('show');z.textContent=n;add('Start requested.','loki');cd=setInterval(()=>{if(--n>0){z.textContent=n;return}clearInterval(cd);o.classList.remove('show');running=true;resetCycle();buttons();add('Private Frequency started.','loki');schedule(300)},1000)}
+async function connect(){if(!navigator.bluetooth){$('browserWarning').classList.remove('hidden');return}try{$('connectBtn').disabled=true;$('connectBtn').textContent='Connecting…';dev=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'nyx'}],optionalServices:[S]});dev.addEventListener('gattserverdisconnected',()=>{ch=null;running=false;clearTimeout(timer);clearInterval(cd);connected(false);add('Nyx disconnected.','fail')});let g=await dev.gatt.connect(),s=await g.getPrimaryService(S);ch=await s.getCharacteristic(T);connected(true);add('Nyx connected. Press Start when you’re ready.','loki')}catch(e){connected(false);add('Connection failed: '+(e.message||e),'fail')}finally{$('connectBtn').disabled=false}}
+$('connectBtn').onclick=connect;$('startBtn').onclick=start;$('stopBtn').onclick=stop;sl.oninput=()=>ro.textContent=sl.value;sl.onchange=()=>user(sl.value);document.querySelectorAll('[data-level]').forEach(b=>b.onclick=()=>user(b.dataset.level));window.addEventListener('pagehide',()=>{clearTimeout(timer);clearInterval(cd)});buttons();add('Private Frequency ready. Waiting for Nyx.');if(!navigator.bluetooth)$('browserWarning').classList.remove('hidden');
 })();
-setInterval(()=>{if(characteristic&&Date.now()-lastSpeechAt>28000)speech(intensityCard(current));},30000);
