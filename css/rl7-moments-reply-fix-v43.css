@@ -1,0 +1,3 @@
+/* v43 resolved interactive shop card */
+#page-chat-room .rl7-action-card[data-v43resolved="1"] .rl7-card-actions{display:none!important}
+#page-chat-room .rl7-v43-shop-result{margin-top:12px!important;padding:10px 12px!important;border-radius:12px!important;background:rgba(190,24,93,.08)!important;color:inherit!important;font-size:13px!important;line-height:1.45!important}
