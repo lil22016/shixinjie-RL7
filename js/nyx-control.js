@@ -28,7 +28,36 @@ function delay(){return 2600+Math.floor(Math.random()*6001);}
 async function lokiMove(){if(!characteristic)return;let v=weighted();try{await rawWrite(v);addLog('Loki turned the intensity to <b>'+v+'%</b>.','loki');if(Date.now()-lastSpeechAt>22000)speech(intensityCard(v));}catch(e){addLog('Loki tried to change the intensity. Device write failed.','fail');return;}randomTimer=setTimeout(lokiMove,delay());}
 function startLokiControl(){clearTimeout(randomTimer);randomTimer=setTimeout(lokiMove,900);}
 function allowAttempt(from,to){let dir=to===0?'stop':to>from?'up':'down';let successChance=dir==='up'?.64:dir==='down'?.48:.32;return {dir,ok:Math.random()<successChance};}
-async function userAttempt(target){target=Math.max(0,Math.min(100,Math.round(+target||0)));if(!characteristic){setUI(current);addLog('Raylee tried to change the intensity, but Nyx is not connected.','fail');return;}let from=current;if(target===from)return;clearTimeout(randomTimer);let a=allowAttempt(from,target);addLog('Raylee tried to turn the intensity to <b>'+target+'%</b>.');if(!a.ok){setUI(from);let key=a.dir==='up'?'upFail':a.dir==='down'?'downFail':'stopFail';let say=card('fail-'+a.dir)||pick(lines[key]);addLog('“'+say+'” — Loki','loki fail');speech(say);randomTimer=setTimeout(lokiMove,delay());return;}try{await rawWrite(target);let key=a.dir==='up'?'upSuccess':a.dir==='down'?'downSuccess':'stopSuccess';addLog('Loki allowed it. Intensity changed to <b>'+target+'%</b>.','loki');let say=card('success-'+a.dir)||pick(lines[key]);addLog('“'+say+'” — Loki','loki');speech(say);}catch(e){setUI(from);addLog('Change failed at the device.','fail');}randomTimer=setTimeout(lokiMove,delay());}
+async function userAttempt(target){target=Math.max(0,Math.min(100,Math.round(+target||0)));if(!characteristic){setUI(current);addLog('Raylee tried to change the intensity, but Nyx is not connected.','fail');return;}let from=current;if(target===from)return;clearTimeout(randomTimer);let a=allowAttempt(from,target);addLog('Raylee tried to turn the intensity to <b>'+target+'%</b>.');if(!a.ok){
+setUI(from);
+let key=a.dir==='up'?'upFail':a.dir==='down'?'downFail':'stopFail';
+let say=card('fail-'+a.dir)||pick(lines[key]);
+addLog('“'+say+'” — Loki','loki fail');speech(say);
+let bonusChance=a.dir==='stop'?.22:a.dir==='down'?.18:.10;
+if(Math.random()<bonusChance){
+  setTimeout(async()=>{
+    if(!characteristic)return;
+    /* Programmatic control is continuous across the full protocol range:
+       any integer 0–100 can be generated; preset buttons are NOT used here. */
+    let bonus;
+    if(a.dir==='stop'||a.dir==='down'){
+      let floor=Math.min(100,Math.max(from+5,55));
+      bonus=floor+Math.floor(Math.random()*(101-floor));
+    }else{
+      bonus=Math.floor(Math.random()*101);
+    }
+    try{
+      await rawWrite(bonus);
+      let bs=card('bonus')||'Actually, I have a better idea.';
+      addLog('<b>Refusal event.</b> Loki changed the intensity to <b>'+bonus+'%</b>.','loki');
+      addLog('“'+bs+'” — Loki','loki');speech(bs);
+    }catch(e){addLog('Refusal event failed at the device.','fail');}
+    randomTimer=setTimeout(lokiMove,delay());
+  },1100);
+}else{
+  randomTimer=setTimeout(lokiMove,delay());
+}
+return;}try{await rawWrite(target);let key=a.dir==='up'?'upSuccess':a.dir==='down'?'downSuccess':'stopSuccess';addLog('Loki allowed it. Intensity changed to <b>'+target+'%</b>.','loki');let say=card('success-'+a.dir)||pick(lines[key]);addLog('“'+say+'” — Loki','loki');speech(say);}catch(e){setUI(from);addLog('Change failed at the device.','fail');}randomTimer=setTimeout(lokiMove,delay());}
 $('connectBtn').addEventListener('click',connect);
 slider.addEventListener('input',()=>{readout.textContent=slider.value;});
 slider.addEventListener('change',()=>userAttempt(slider.value));
