@@ -1,0 +1,33 @@
+/* RL7 v44 — shop result is stable before paint and visibly separated */
+#page-chat-room .message-row.self .rl7-action-card .rl7-card-actions{
+  visibility:hidden!important;
+}
+/* Sender can never answer their own request card. If it is unresolved, keep the
+   controls absent rather than briefly presenting fake choices. */
+#page-chat-room .message-row.self .rl7-action-card button{
+  pointer-events:none!important;
+}
+#page-chat-room .rl7-action-card[data-v44resolved="1"] .rl7-card-actions,
+#page-chat-room .rl7-action-card[data-v43resolved="1"] .rl7-card-actions{
+  display:none!important;
+}
+#page-chat-room .rl7-v44-shop-result{
+  display:block!important;
+  margin-top:14px!important;
+  padding:11px 13px!important;
+  border-radius:12px!important;
+  background:rgba(139,18,72,.14)!important;
+  border:1px solid rgba(139,18,72,.26)!important;
+  color:#86164a!important;
+  font-size:13px!important;
+  font-weight:700!important;
+  line-height:1.45!important;
+  opacity:1!important;
+}
+@media (prefers-color-scheme:dark){
+ #page-chat-room .rl7-v44-shop-result{
+   background:rgba(255,132,184,.16)!important;
+   border-color:rgba(255,172,207,.34)!important;
+   color:#ffd3e5!important;
+ }
+}
