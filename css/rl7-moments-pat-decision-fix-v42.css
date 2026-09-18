@@ -1,0 +1,39 @@
+/* RL7 v42 — Decision modal mobile readability + keyboard-safe scrolling */
+#decision-overlay .decision-panel{
+  overflow-y:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  touch-action:pan-y !important;
+  overscroll-behavior:contain !important;
+  max-height:min(88vh, calc(100dvh - 24px)) !important;
+  padding-bottom:max(18px, env(safe-area-inset-bottom)) !important;
+}
+#decision-overlay .decision-input,
+#decision-overlay input.decision-input,
+#decision-overlay textarea.decision-input{
+  background:#fff !important;
+  color:#2f3440 !important;
+  -webkit-text-fill-color:#2f3440 !important;
+  caret-color:#2f3440 !important;
+  border:1px solid rgba(80,90,110,.24) !important;
+  opacity:1 !important;
+}
+#decision-overlay .decision-input::placeholder{
+  color:#8a909c !important;
+  -webkit-text-fill-color:#8a909c !important;
+  opacity:1 !important;
+}
+#decision-overlay .decision-options-wrap{
+  max-height:none !important;
+  overflow:visible !important;
+}
+@media (max-width:480px){
+ #decision-overlay{align-items:flex-start !important;overflow-y:auto !important;-webkit-overflow-scrolling:touch !important;padding:12px !important;}
+ #decision-overlay .decision-panel{
+   margin-top:max(8px, env(safe-area-inset-top)) !important;
+   margin-bottom:max(16px, env(safe-area-inset-bottom)) !important;
+   max-height:calc(100dvh - 28px) !important;
+   zoom:1 !important;
+ }
+ #decision-overlay .decision-input{font-size:16px !important;} /* avoids iOS focus zoom */
+ #decision-overlay .decision-option-row{scroll-margin-top:90px;scroll-margin-bottom:220px;}
+}
