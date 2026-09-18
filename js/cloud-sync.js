@@ -1,40 +1,38 @@
-/* RL7 Live Cloud Sync v4 — per-device change detection, cloud-newer pull */
+/* RL7 Live Cloud Sync v5 — additive merge, never whole-list replace */
 (function(){'use strict';
 const C={url:'https://tncilkhksteqocbnqcrt.supabase.co',key:'sb_publishable_fj5yqUMg3BLws3HoMY9MiQ_TcGXjHsS',table:'user_sync'};
-const A='__rl7_cloud_auth_v1',DEV='__rl7_cloud_device_v3',READY='__rl7_cloud_ready_v3',META='__rl7_cloud_meta_v4';
-let busy=false,applying=false,baseline={},cloudSeen={};
+const A='__rl7_cloud_auth_v1',READY='__rl7_cloud_ready_v3';let busy=false,applying=false;
 const J=(s,f)=>{try{return JSON.parse(s)}catch(e){return f}},auth=()=>J(localStorage.getItem(A),null),uid=()=>auth()?.user?.id;
-function saveAuth(v){if(v&&v.expires_in&&!v.expires_at)v.expires_at=Math.floor(Date.now()/1000)+Number(v.expires_in);localStorage.setItem(A,JSON.stringify(v))}
-function excluded(k){return !k||k===A||k===DEV||k===READY||k===META||k.startsWith('__rl7_cloud_')||k.startsWith('sb-')||k.toLowerCase().includes('supabase')}
-async function api(path,opt={}){let a=auth(),h=Object.assign({'apikey':C.key,'Content-Type':'application/json'},opt.headers||{});if(a?.access_token)h.Authorization='Bearer '+a.access_token;let r=await fetch(C.url+path,Object.assign({},opt,{headers:h})),t=await r.text(),d=t?J(t,t):null;if(!r.ok)throw Error((d&&(d.msg||d.message||d.error_description||d.error))||('HTTP '+r.status));return d}
-async function signin(email,password){let d=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});saveAuth(d);return d}
-async function ensure(){let a=auth();if(!a)return false;if(a.expires_at&&a.expires_at*1000<Date.now()+60000&&a.refresh_token){try{saveAuth(await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:a.refresh_token})}))}catch(e){return false}}return !!uid()}
+function excluded(k){return !k||k===A||k===READY||k.startsWith('__rl7_cloud_')||k.startsWith('sb-')||k.toLowerCase().includes('supabase')}
+async function api(path,opt={}){let a=auth(),h=Object.assign({apikey:C.key,'Content-Type':'application/json'},opt.headers||{});if(a?.access_token)h.Authorization='Bearer '+a.access_token;let r=await fetch(C.url+path,Object.assign({},opt,{headers:h})),t=await r.text(),d=t?J(t,t):null;if(!r.ok)throw Error((d&&(d.msg||d.message||d.error_description||d.error))||('HTTP '+r.status));return d}
+async function ensure(){let a=auth();if(!a)return false;if(a.expires_at&&a.expires_at*1000<Date.now()+60000&&a.refresh_token){try{let d=await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:a.refresh_token})});if(d.expires_in&&!d.expires_at)d.expires_at=Math.floor(Date.now()/1000)+Number(d.expires_in);localStorage.setItem(A,JSON.stringify(d))}catch(e){return false}}return !!uid()}
 function all(db,st){return new Promise((res,rej)=>{let q=indexedDB.open(db);q.onerror=()=>rej(q.error);q.onsuccess=()=>{let d=q.result;if(!d.objectStoreNames.contains(st)){d.close();return res([])}let tx=d.transaction(st,'readonly'),r=tx.objectStore(st).getAll();r.onsuccess=()=>{d.close();res(r.result||[])};r.onerror=()=>rej(r.error)}})}
 function put(db,st,row){return new Promise((res,rej)=>{let q=indexedDB.open(db);q.onerror=()=>rej(q.error);q.onsuccess=()=>{let d=q.result;if(!d.objectStoreNames.contains(st)){d.close();return res()}let tx=d.transaction(st,'readwrite');tx.objectStore(st).put(row);tx.oncomplete=()=>{d.close();res()};tx.onerror=()=>rej(tx.error)}})}
 async function collect(){let o={};for(let i=0;i<localStorage.length;i++){let k=localStorage.key(i);if(!excluded(k))o['ls:'+k]={value:localStorage.getItem(k)}};for(let r of await all('mirror_app_kv_db','kv'))if(r?.key)o['kv:'+r.key]=r;for(let r of await all('mirror_message_db','messages'))if(r?.chatId)o['msg:'+r.chatId]=r;for(let r of await all('MirrorStickers','stickers'))if(r?.id!=null)o['sticker:'+r.id]=r;for(let r of await all('MirrorStickers','stickerCategories'))if(r?.id!=null)o['stickerCat:'+r.id]=r;return o}
-const sig=x=>JSON.stringify(x);
-async function rows(){return api('/rest/v1/'+C.table+'?user_id=eq.'+encodeURIComponent(uid())+'&data_key=not.like.backup:%25&select=data_key,data,updated_at')}
-async function push(arr){for(let i=0;i<arr.length;i+=30){let body=arr.slice(i,i+30).map(x=>({user_id:uid(),data_key:x.k,data:x.d,updated_at:x.at}));await api('/rest/v1/'+C.table+'?on_conflict=user_id,data_key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})}}
-async function apply(r){let k=r.data_key,d=r.data;if(k.startsWith('ls:')){let n=k.slice(3);if(!excluded(n)&&d?.value!=null)localStorage.setItem(n,String(d.value))}else if(k.startsWith('kv:'))await put('mirror_app_kv_db','kv',d);else if(k.startsWith('msg:'))await put('mirror_message_db','messages',d);else if(k.startsWith('sticker:'))await put('MirrorStickers','stickers',d);else if(k.startsWith('stickerCat:'))await put('MirrorStickers','stickerCategories',d)}
-function state(s){let e=document.getElementById('rl7-cloud-settings-state');if(e)e.textContent=s==='ok'?'已同步':s==='error'?'同步失败':localStorage.getItem(READY)?'同步开启':'同步暂停'}
-async function sync(){
- if(busy||applying||!localStorage.getItem(READY)||!await ensure())return;busy=true;
- try{let loc=await collect(),cr=await rows(),cm={};cr.forEach(r=>cm[r.data_key]=r);let first=!Object.keys(baseline).length,p=[];
-  if(first){/* cloud is canonical on first v4 pass; missing cloud keys are uploaded */
-   for(let r of cr){if(r.data_key in loc&&sig(loc[r.data_key])!==sig(r.data)){applying=true;await apply(r);applying=false}cloudSeen[r.data_key]=r.updated_at}
-   loc=await collect();for(let [k,d] of Object.entries(loc))if(!cm[k])p.push({k,d,at:new Date().toISOString()});
-  }else{
-   for(let [k,d] of Object.entries(loc)){let s=sig(d),changed=baseline[k]!==undefined&&baseline[k]!==s,r=cm[k],cloudChanged=r&&cloudSeen[k]&&r.updated_at!==cloudSeen[k];
-    if(changed)p.push({k,d,at:new Date().toISOString()});else if(r&&cloudChanged&&s!==sig(r.data)){applying=true;await apply(r);applying=false}}
-   for(let r of cr)if(!(r.data_key in loc)){applying=true;await apply(r);applying=false}
-  }
-  if(p.length)await push(p);let fresh=await collect();baseline={};Object.entries(fresh).forEach(([k,d])=>baseline[k]=sig(d));let rr=await rows();cloudSeen={};rr.forEach(r=>cloudSeen[r.data_key]=r.updated_at);state('ok')
- }catch(e){console.error('RL7 cloud v4',e);state('error')}finally{busy=false}
+function time(x){if(!x||typeof x!=='object')return 0;for(let k of ['updatedAt','updated_at','time','timestamp','createdAt','created_at','date']){let v=x[k];if(v!=null){let n=typeof v==='number'?v:Date.parse(v);if(Number.isFinite(n))return n}}return 0}
+function ident(x){if(x&&typeof x==='object'){for(let k of ['id','messageId','msgId','momentId','commentId','uuid','key'])if(x[k]!=null)return k+':'+String(x[k])}return 'json:'+JSON.stringify(x)}
+function mergeArray(a,b){let m=new Map();for(let x of [...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])]){let k=ident(x),old=m.get(k);if(!old)m.set(k,x);else if(x&&old&&typeof x==='object'&&typeof old==='object')m.set(k,mergeObj(old,x));else m.set(k,x)}let out=[...m.values()];if(out.every(x=>time(x)))out.sort((x,y)=>time(x)-time(y));return out}
+function mergeObj(a,b){if(!a||typeof a!=='object'||Array.isArray(a)||!b||typeof b!=='object'||Array.isArray(b))return b??a;let o=Object.assign({},a);for(let [k,v] of Object.entries(b)){if(Array.isArray(v)&&Array.isArray(o[k]))o[k]=mergeArray(o[k],v);else if(v&&o[k]&&typeof v==='object'&&typeof o[k]==='object'&&!Array.isArray(v)&&!Array.isArray(o[k]))o[k]=mergeObj(o[k],v);else if(o[k]===undefined)o[k]=v;else if(time(b)>=time(a)&&time(b)>0)o[k]=v}return o}
+function mergeValue(a,b){if(Array.isArray(a)||Array.isArray(b))return mergeArray(a,b);if(a&&b&&typeof a==='object'&&typeof b==='object')return mergeObj(a,b);return b??a}
+function mergeWrapped(local,cloud,key){
+ if(!local)return cloud;if(!cloud)return local;
+ if(key.startsWith('ls:')&&'value'in local&&'value'in cloud){let la=J(local.value,undefined),cb=J(cloud.value,undefined);if(la!==undefined&&cb!==undefined&&(typeof la==='object'||typeof cb==='object'))return{value:JSON.stringify(mergeValue(la,cb))};return local}
+ if(key.startsWith('msg:')){let o=mergeObj(cloud,local);if(Array.isArray(local.messages)||Array.isArray(cloud.messages))o.messages=mergeArray(cloud.messages,local.messages);return o}
+ if(key.startsWith('kv:')){let o=mergeObj(cloud,local);if('value'in local&&'value'in cloud)o.value=mergeValue(cloud.value,local.value);return o}
+ return mergeValue(cloud,local)
 }
-function toast(s){let x=document.createElement('div');x.className='rl7-cloud-toast';x.textContent=s;document.body.appendChild(x);setTimeout(()=>x.remove(),2400)}
-function enable(){localStorage.setItem(READY,'1');sync();toast('Live sync enabled')}function disable(){localStorage.removeItem(READY);state('off');toast('Live sync paused')}
-function modal(){document.getElementById('rl7-cloud-modal')?.remove();let d=document.createElement('div');d.id='rl7-cloud-modal';d.className='rl7-cloud-overlay',signed=!!uid(),on=!!localStorage.getItem(READY);d.innerHTML='<div class="rl7-cloud-card"><button class="rl7-cloud-x">×</button><div class="rl7-cloud-title">Cloud Sync</div>'+(signed?'<div class="rl7-cloud-sub">'+(on?'Live sync is ON':'Live sync is paused')+'</div><button id="rl7-toggle" class="rl7-cloud-primary">'+(on?'Pause live sync':'Enable live sync')+'</button><button id="rl7-now" class="rl7-cloud-secondary">Sync now</button>':'<div class="rl7-cloud-sub">Sign in with the same account on every device.</div><input id="rl7-email" type="email" placeholder="Email"><input id="rl7-pass" type="password" placeholder="Password"><button id="rl7-signin" class="rl7-cloud-primary">Sign in</button>')+'</div>';document.body.appendChild(d);d.querySelector('.rl7-cloud-x').onclick=()=>d.remove();if(signed){d.querySelector('#rl7-toggle').onclick=()=>{on?disable():enable();d.remove()};d.querySelector('#rl7-now').onclick=()=>{sync();d.remove()}}else d.querySelector('#rl7-signin').onclick=async()=>{try{await signin(d.querySelector('#rl7-email').value.trim(),d.querySelector('#rl7-pass').value);d.remove();modal()}catch(e){toast(e.message)}}}
-function inject(){document.getElementById('rl7-cloud-btn')?.remove();if(document.getElementById('rl7-cloud-settings-entry'))return;let lists=document.querySelectorAll('#page-settings .settings-list'),list=lists[1];if(!list)return;let sep=document.createElement('div');sep.className='list-divider';let x=document.createElement('div');x.className='settings-item';x.id='rl7-cloud-settings-entry';x.innerHTML='<div class="s-icon"><i class="fas fa-cloud"></i></div><div class="s-content"><div class="s-label">云端同步</div><div class="s-value" id="rl7-cloud-settings-state">'+(localStorage.getItem(READY)?'同步开启':'同步暂停')+'</div></div><i class="fas fa-chevron-right s-arrow"></i>';x.onclick=modal;list.appendChild(sep);list.appendChild(x)}
-function boot(){if(!document.getElementById('rl7-cloud-css')){let l=document.createElement('link');l.id='rl7-cloud-css';l.rel='stylesheet';l.href='css/cloud-sync.css?v=20260918v4';document.head.appendChild(l)}inject();setInterval(()=>{inject();if(document.visibilityState==='visible')sync()},1500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});if(localStorage.getItem(READY))setTimeout(sync,300)}
-window.RL7CloudSync={syncNow:sync,enable,disable,signIn:signin,open:modal};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+async function rows(){return api('/rest/v1/'+C.table+'?user_id=eq.'+encodeURIComponent(uid())+'&data_key=not.like.backup:%25&select=data_key,data,updated_at')}
+async function push(items){for(let i=0;i<items.length;i+=25){let body=items.slice(i,i+25).map(x=>({user_id:uid(),data_key:x.k,data:x.d,updated_at:new Date().toISOString()}));await api('/rest/v1/'+C.table+'?on_conflict=user_id,data_key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(body)})}}
+async function apply(k,d){if(k.startsWith('ls:')){let n=k.slice(3);if(!excluded(n)&&d?.value!=null)localStorage.setItem(n,String(d.value))}else if(k.startsWith('kv:'))await put('mirror_app_kv_db','kv',d);else if(k.startsWith('msg:'))await put('mirror_message_db','messages',d);else if(k.startsWith('sticker:'))await put('MirrorStickers','stickers',d);else if(k.startsWith('stickerCat:'))await put('MirrorStickers','stickerCategories',d)}
+function state(s){let e=document.getElementById('rl7-cloud-settings-state');if(e)e.textContent=s==='ok'?'已同步 · 合并模式':s==='error'?'同步失败':localStorage.getItem(READY)?'同步开启':'同步暂停'}
+async function sync(){if(busy||applying||!localStorage.getItem(READY)||!await ensure())return;busy=true;try{
+ let loc=await collect(),rr=await rows(),cm={};rr.forEach(r=>cm[r.data_key]=r.data);let keys=new Set([...Object.keys(loc),...Object.keys(cm)]),out=[];
+ applying=true;
+ for(let k of keys){let merged=mergeWrapped(loc[k],cm[k],k);if(merged===undefined)continue;await apply(k,merged);if(JSON.stringify(merged)!==JSON.stringify(cm[k]))out.push({k,d:merged})}
+ applying=false;if(out.length)await push(out);state('ok')
+ }catch(e){applying=false;console.error('[RL7 cloud merge v5]',e);state('error')}finally{busy=false}}
+function enable(){localStorage.setItem(READY,'1');sync()}function disable(){localStorage.removeItem(READY);state('off')}
+function inject(){let row=document.getElementById('rl7-cloud-settings-entry');if(!row)return;let on=!!localStorage.getItem(READY),v=row.querySelector('#rl7-cloud-settings-state');if(v)v.textContent=on?'同步开启 · 合并模式':'同步暂停 · 点击开启'}
+function boot(){setInterval(()=>{inject();if(document.visibilityState==='visible')sync()},2000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});if(localStorage.getItem(READY))setTimeout(sync,500)}
+window.RL7CloudSync={syncNow:sync,enable,disable};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
