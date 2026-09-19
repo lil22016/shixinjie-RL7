@@ -288,8 +288,8 @@
 
 .letter-editor-note {
   position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
+  background: rgba(23,25,30,0.82);
+  border: 1px solid rgba(255,255,255,0.16);
   border-radius: 16px;
   padding: 18px 16px 14px;
   box-shadow: var(--shadow-md);
@@ -318,12 +318,15 @@
   resize: none;
   font-size: 0.88rem;
   line-height: 1.8;
-  color: var(--text-dark);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
   font-family: inherit;
 }
 
 .letter-editor-note textarea::placeholder {
-  color: var(--text-lighter);
+  color: rgba(255,255,255,0.58);
+  -webkit-text-fill-color: rgba(255,255,255,0.58);
 }
 
 .letter-editor-tip {
@@ -387,8 +390,10 @@
   gap: 10px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
+  background: rgba(23,25,30,0.82);
+  border: 1px solid rgba(255,255,255,0.16);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -415,12 +420,12 @@
 .letter-announce-option .a-title {
   font-size: 0.84rem;
   font-weight: 600;
-  color: var(--text-dark);
+  color: #fff;
 }
 
 .letter-announce-option .a-desc {
   font-size: 0.72rem;
-  color: var(--text-light);
+  color: rgba(255,255,255,0.72);
   margin-top: 1px;
 }
 

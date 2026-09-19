@@ -45,33 +45,15 @@ html.rl7-ios #page-chat-room.page-fullscreen.active {
   z-index: 2147483000 !important;
   isolation: isolate !important;
 }
-/* Keep call cards compact; only the overlay itself is promoted above chat. */
-#call-active-overlay,
-#call-incoming-overlay,
-#call-picker-overlay {
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0 !important;
-}
-#call-active-panel {
-  position: relative !important;
-  inset: auto !important;
-  width: 360px !important;
-  height: auto !important;
-  max-width: calc(100vw - 48px) !important;
-  max-height: calc(100dvh - 80px) !important;
+#call-active-panel,
+.call-incoming-panel {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
   z-index: 1 !important;
-}
-.call-incoming-panel,
-.call-picker-panel {
-  position: relative !important;
-  inset: auto !important;
-  height: auto !important;
-  z-index: 1 !important;
-}
-.call-picker-panel {
-  width: 300px !important;
-  max-width: calc(100vw - 56px) !important;
 }
 
 /* Mini call bubble is viewport-fixed; JS supplies left/top while dragging. */
@@ -81,40 +63,4 @@ html.rl7-ios #page-chat-room.page-fullscreen.active {
   touch-action: none !important;
   user-select: none !important;
   -webkit-user-select: none !important;
-}
-
-/* Pat panel: v64's generic modal sweep made this pale-on-pale. Force readable dark glass. */
-#pat-overlay.black-overlay {
-  z-index: 2147482000 !important;
-}
-#pat-overlay .black-panel,
-#pat-overlay .pat-panel {
-  background: rgba(20, 22, 27, .96) !important;
-  color: #fff !important;
-  border: 1px solid rgba(255,255,255,.16) !important;
-  -webkit-backdrop-filter: blur(22px) !important;
-  backdrop-filter: blur(22px) !important;
-}
-#pat-overlay .black-title,
-#pat-overlay label,
-#pat-overlay .pat-preset-a,
-#pat-overlay .pat-preset-b,
-#pat-overlay .pat-input-tag {
-  color: #fff !important;
-  -webkit-text-fill-color: #fff !important;
-}
-#pat-overlay .pat-preset-card,
-#pat-overlay .black-input,
-#pat-overlay .black-btn {
-  background: rgba(255,255,255,.10) !important;
-  color: #fff !important;
-  -webkit-text-fill-color: #fff !important;
-  border-color: rgba(255,255,255,.16) !important;
-}
-#pat-overlay .black-input::placeholder {
-  color: rgba(255,255,255,.48) !important;
-  -webkit-text-fill-color: rgba(255,255,255,.48) !important;
-}
-#pat-overlay .black-btn-primary {
-  background: rgba(255,255,255,.18) !important;
 }

@@ -116,17 +116,6 @@ html.liquid-theme [id^="page-wordcard"] textarea::placeholder{
   color:rgba(255,255,255,.52)!important;
   -webkit-text-fill-color:rgba(255,255,255,.52)!important;
 }
-html.liquid-theme [id^="page-wordcard"] .word-card,
-html.liquid-theme [id^="page-wordcard"] .wordcard-group-card,
-html.liquid-theme [id^="page-wordcard"] .wordcard-card,
-html.liquid-theme [id^="page-wordcard"] .discover-list,
-html.liquid-theme [id^="page-wordcard"] .discover-item,
-html.liquid-theme [id^="page-wordcard"] .settings-list,
-html.liquid-theme [id^="page-wordcard"] .settings-item{
-  background:rgba(23,25,30,.80)!important;
-  color:#fff!important;
-  border-color:var(--rl7-line)!important;
-}
 html.liquid-theme [id^="page-wordcard"] .form-modal-panel,
 html.liquid-theme [id^="page-wordcard"] .modal-panel,
 html.liquid-theme .form-modal-panel,
@@ -148,22 +137,6 @@ html.liquid-theme .modal-panel select{
 }
 
 /* SETTINGS / feature subpages: bubble shop, whereabouts, account/settings forms, etc. */
-html.liquid-theme [id^="page-"][id$="-settings"] .settings-list,
-html.liquid-theme [id^="page-"][id$="-settings"] .settings-section,
-html.liquid-theme [id^="page-"][id$="-settings"] .settings-item,
-html.liquid-theme #page-settings .settings-list,
-html.liquid-theme #page-settings .settings-section,
-html.liquid-theme #page-settings .settings-item,
-html.liquid-theme #page-bubble-shop .settings-list,
-html.liquid-theme #page-bubble-shop .settings-section,
-html.liquid-theme #page-bubble-shop .settings-item,
-html.liquid-theme #page-whereabouts .settings-list,
-html.liquid-theme #page-whereabouts .settings-section,
-html.liquid-theme #page-whereabouts .settings-item{
-  background:rgba(23,25,30,.82)!important;
-  color:#fff!important;
-  border-color:var(--rl7-line)!important;
-}
 html.liquid-theme [id^="page-"][id$="-settings"] input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
 html.liquid-theme [id^="page-"][id$="-settings"] textarea,
 html.liquid-theme [id^="page-"][id$="-settings"] select,
