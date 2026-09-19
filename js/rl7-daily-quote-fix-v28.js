@@ -404,3 +404,106 @@ html.liquid-theme .moments-panel input{background:#fff!important;color:#303641!i
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add,{once:true});else add();
 })();
+
+
+
+/* ===== RL7 UI polish v49 =====
+   Reliable release notice + no splash + Moments/discover polish.
+   NOTE: true iOS status-bar wallpaper extension also requires index.html
+   apple-mobile-web-app-status-bar-style=black-translucent (see README).
+*/
+(function(){'use strict';
+if(window.__RL7_UI_POLISH_V49__)return;window.__RL7_UI_POLISH_V49__=1;
+
+/* Remove the decorative splash entirely. This runs while scripts are still parsing,
+   before DOMContentLoaded -> App.init(), so App.initSplash is replaced before it is called. */
+function killSplash(){
+ try{
+   if(window.App){
+     App.initSplash=function(){
+       var splash=document.getElementById('splash-screen');
+       var app=document.getElementById('app');
+       if(splash){splash.style.display='none';splash.remove();}
+       if(app)app.classList.add('active');
+     };
+   }
+ }catch(e){}
+}
+killSplash();
+
+/* Release notice is version-based, not index.html-hash-based.
+   Therefore a JS/CSS-only update still produces one notice. */
+var RELEASE='2026-09-18-v49';
+function showRelease(){
+ try{
+   var key='rl7_release_seen_v49';
+   if(localStorage.getItem(key)===RELEASE)return;
+   localStorage.setItem(key,RELEASE);
+   setTimeout(function(){
+     if(document.getElementById('rl7-v49-release'))return;
+     var o=document.createElement('div');o.id='rl7-v49-release';
+     o.innerHTML='<div class="rl7-v49-release-card"><b>Updated</b><span>拾心界已经更新到 v49。</span><button type="button">OK</button></div>';
+     document.body.appendChild(o);
+     o.querySelector('button').onclick=function(){o.remove()};
+   },700);
+ }catch(e){}
+}
+
+function addStyle(){
+ if(document.getElementById('rl7-v49-style'))return;
+ var s=document.createElement('style');s.id='rl7-v49-style';s.textContent=`
+/* Splash is intentionally disabled. */
+#splash-screen{display:none!important}
+
+/* One-time release notice. */
+#rl7-v49-release{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,12,18,.42);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.rl7-v49-release-card{width:min(86vw,340px);padding:21px 22px;border-radius:23px;background:rgba(28,30,36,.94);border:1px solid rgba(255,255,255,.24);box-shadow:0 18px 58px rgba(0,0,0,.34);color:#fff;display:grid;gap:10px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.rl7-v49-release-card b{font-size:22px}.rl7-v49-release-card span{font-size:14px;color:rgba(255,255,255,.82)}.rl7-v49-release-card button{justify-self:end;border:1px solid rgba(255,255,255,.24);border-radius:12px;padding:8px 17px;background:rgba(255,255,255,.12);color:#fff;font-weight:700}
+
+/* Moments: toolbar and feed meet directly; no wallpaper slit above first card. */
+html.liquid-theme .moments-toolbar{margin-bottom:0!important;border-bottom:0!important}
+html.liquid-theme .moments-feed{
+ margin-top:0!important;
+ padding-top:0!important;
+ background:#f4f5f7!important;
+}
+html.liquid-theme .moments-feed>.moment-card:first-child{margin-top:0!important;border-top-left-radius:0!important;border-top-right-radius:0!important}
+html.liquid-theme .moment-comment .c-reply{
+ color:#626b78!important;
+ -webkit-text-fill-color:#626b78!important;
+ text-shadow:none!important;
+ font-weight:500!important;
+}
+html.liquid-theme .moment-comment .c-name{color:#536783!important;-webkit-text-fill-color:#536783!important}
+html.liquid-theme .moment-comment .c-text{color:#303641!important;-webkit-text-fill-color:#303641!important}
+
+/* Discover: use the same darker glass language as Settings. */
+html.liquid-theme .discover-list{
+ background:rgba(18,20,25,.34)!important;
+ border:1px solid rgba(255,255,255,.32)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 34px rgba(0,0,0,.18)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+}
+html.liquid-theme .discover-item{border-color:rgba(255,255,255,.12)!important}
+html.liquid-theme .discover-icon{
+ background:rgba(255,255,255,.11)!important;
+ border:1px solid rgba(255,255,255,.15)!important;
+ color:#fff!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;
+}
+html.liquid-theme .discover-title{color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.66)!important}
+html.liquid-theme .discover-desc,html.liquid-theme .discover-arrow{color:rgba(255,255,255,.72)!important;text-shadow:0 1px 3px rgba(0,0,0,.55)!important}
+`;
+ document.head.appendChild(s);
+}
+
+function boot49(){
+ killSplash();addStyle();
+ var app=document.getElementById('app');if(app)app.classList.add('active');
+ var splash=document.getElementById('splash-screen');if(splash)splash.remove();
+ showRelease();
+}
+addStyle();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot49,{once:true});else boot49();
+})();
