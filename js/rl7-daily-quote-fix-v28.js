@@ -268,3 +268,139 @@ function install(){
 function boot(){style();let n=0,t=setInterval(()=>{if(install()||++n>60)clearInterval(t)},200)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
+
+
+
+/* ===== RL7 Liquid Glass polish v48 =====
+   Fixes: iOS top safe-area, settings contrast, quick-glass home icons,
+   mood editor readability, and Moments readability/performance.
+*/
+(function(){'use strict';
+if(window.__RL7_LIQUID_POLISH_V48__)return;window.__RL7_LIQUID_POLISH_V48__=1;
+function add(){
+ if(document.getElementById('rl7-liquid-v48-style'))return;
+ var s=document.createElement('style');s.id='rl7-liquid-v48-style';s.textContent=`
+/* 1. iOS/Bluefy safe area: extend wallpaper/theme behind the status bar.
+   Body remains transparent in Liquid mode so the fixed wallpaper is visible. */
+html.liquid-theme,html.liquid-theme body{
+ min-height:100%;background-color:#202126!important;
+}
+html.liquid-theme body{background:transparent!important}
+html.liquid-theme #rl7-liquid-wallpaper{
+ top:calc(-1 * env(safe-area-inset-top,0px))!important;
+ left:0!important;right:0!important;
+ width:100vw!important;
+ height:calc(100dvh + env(safe-area-inset-top,0px) + env(safe-area-inset-bottom,0px))!important;
+ background-color:#202126!important;
+}
+html.liquid-theme #app-bg{
+ top:calc(-1 * env(safe-area-inset-top,0px))!important;
+ min-height:calc(100dvh + env(safe-area-inset-top,0px))!important;
+}
+html.liquid-theme #app.phone-frame{min-height:100dvh!important}
+
+/* 2. Settings / global icon customization: dark neutral glass, never white-on-white. */
+html.liquid-theme .icon-zone-box{
+ background:rgba(17,19,23,.42)!important;
+ border:1px solid rgba(255,255,255,.30)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 30px rgba(0,0,0,.16)!important;
+ -webkit-backdrop-filter:blur(12px) saturate(105%)!important;
+ backdrop-filter:blur(12px) saturate(105%)!important;
+}
+html.liquid-theme .icon-zone-tip{color:rgba(255,255,255,.76)!important;text-shadow:0 1px 3px rgba(0,0,0,.65)}
+html.liquid-theme .icon-zone-label{color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.68)}
+html.liquid-theme .icon-zone-hex{color:rgba(255,255,255,.80)!important;text-shadow:0 1px 3px rgba(0,0,0,.65)}
+html.liquid-theme .icon-zone-hex.resettable{color:#fff!important}
+html.liquid-theme .icon-zone-save,html.liquid-theme .icon-zone-reset-all{
+ background:rgba(20,22,27,.34)!important;color:#fff!important;
+ border:1px solid rgba(255,255,255,.30)!important
+}
+html.liquid-theme #page-appearance .section-title,
+html.liquid-theme #page-settings-appearance .section-title{color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,.72)}
+
+/* 3. Home app icons: quick glass, matching the Companion visual language. */
+html.liquid-theme .home-feature-icon{
+ width:44px!important;height:44px!important;border-radius:16px!important;
+ background:rgba(20,22,28,.20)!important;
+ border:1px solid rgba(255,255,255,.34)!important;
+ color:#fff!important;
+ -webkit-backdrop-filter:blur(7px) saturate(105%)!important;
+ backdrop-filter:blur(7px) saturate(105%)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 7px 18px rgba(0,0,0,.14)!important;
+}
+html.liquid-theme .home-feature-icon i{filter:drop-shadow(0 2px 3px rgba(0,0,0,.42))}
+html.liquid-theme .home-feature-label{color:#fff!important;text-shadow:0 2px 4px rgba(0,0,0,.82)!important}
+
+/* 4. MoodFlow / generic glass editors: keep the glass panel darker and inputs readable.
+   Explicit colors prevent the Liquid theme's white --text-dark from landing on white controls. */
+html.liquid-theme #mood-overlay .glass-modal-panel{
+ background:rgba(22,24,30,.62)!important;
+ border:1px solid rgba(255,255,255,.34)!important;
+ -webkit-backdrop-filter:blur(14px) saturate(105%)!important;
+ backdrop-filter:blur(14px) saturate(105%)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 54px rgba(0,0,0,.30)!important;
+}
+html.liquid-theme #mood-overlay .glass-modal-title,
+html.liquid-theme #mood-overlay .mood-add-title,
+html.liquid-theme #mood-overlay .mood-modal-desc,
+html.liquid-theme #mood-overlay .mood-color-custom{color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.70)}
+html.liquid-theme #mood-overlay input[type="text"],
+html.liquid-theme #mood-overlay select{
+ background:rgba(255,255,255,.92)!important;
+ color:#2f3440!important;
+ -webkit-text-fill-color:#2f3440!important;
+ caret-color:#2f3440!important;
+ border:1px solid rgba(255,255,255,.90)!important;
+ text-shadow:none!important;
+}
+html.liquid-theme #mood-overlay input[type="text"]::placeholder{color:#8a909c!important;-webkit-text-fill-color:#8a909c!important}
+html.liquid-theme #mood-overlay .glass-btn{
+ color:#fff!important;background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.30)!important;
+}
+html.liquid-theme #mood-overlay .glass-btn.primary{background:rgba(255,255,255,.22)!important}
+html.liquid-theme #mood-overlay .mood-swatch{box-shadow:0 0 0 1px rgba(255,255,255,.28),0 2px 5px rgba(0,0,0,.22)}
+html.liquid-theme #mood-overlay .mood-swatch.active{outline:2px solid #fff!important;outline-offset:2px}
+
+/* 5. Moments: intentionally opt out of heavy Liquid Glass.
+   Restore a readable neutral feed/card surface; only use text shadow where content sits over translucent areas. */
+html.liquid-theme #page-moments,
+html.liquid-theme .moments-page{--moments-ink:#303641;--moments-muted:#69717d}
+html.liquid-theme .moments-feed{
+ background:rgba(246,247,249,.96)!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+html.liquid-theme .moment-card{
+ background:rgba(255,255,255,.98)!important;
+ border:1px solid rgba(50,58,70,.10)!important;
+ box-shadow:0 2px 9px rgba(20,28,40,.08)!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+html.liquid-theme .moment-card-text,
+html.liquid-theme .moment-comment,
+html.liquid-theme .moment-comment .c-text,
+html.liquid-theme .moment-card-author{color:var(--moments-ink)!important;text-shadow:0 1px 1px rgba(0,0,0,.10)!important}
+html.liquid-theme .moment-card-time,
+html.liquid-theme .moment-card-source{color:var(--moments-muted)!important;text-shadow:none!important}
+html.liquid-theme .moment-comment .c-name,
+html.liquid-theme .moment-like-chip{color:#536783!important}
+html.liquid-theme .moment-card-actions{border-color:rgba(45,55,70,.10)!important}
+html.liquid-theme .moment-action-btn{color:#596270!important;background:rgba(50,60,75,.04)!important}
+html.liquid-theme .moment-action-btn.danger{color:#c85f5f!important}
+html.liquid-theme .moment-likes,
+html.liquid-theme .moment-comments{background:rgba(238,241,245,.92)!important;border-radius:8px!important}
+html.liquid-theme .moments-toolbar{
+ background:rgba(246,247,249,.96)!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+html.liquid-theme .moments-toolbar-btn{color:#3f4855!important;text-shadow:none!important}
+html.liquid-theme .moments-sheet,
+html.liquid-theme .moments-panel{
+ background:rgba(250,250,251,.98)!important;color:#303641!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+html.liquid-theme .moments-sheet input,
+html.liquid-theme .moments-panel input{background:#fff!important;color:#303641!important;-webkit-text-fill-color:#303641!important}
+`;document.head.appendChild(s);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add,{once:true});else add();
+})();
