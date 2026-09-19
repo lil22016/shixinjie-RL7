@@ -1,0 +1,102 @@
+/* RL7 v65 — mobile stability patch
+   Scope: iOS top canvas, chat keyboard, call overlays/mini bubble, pat panel contrast. */
+
+html, body {
+  margin: 0 !important;
+  width: 100% !important;
+  min-height: 100dvh !important;
+}
+
+/* The document/background may extend into the iOS status-bar safe area.
+   Individual controls decide whether they need safe-area padding. */
+html.rl7-ios, html.rl7-ios body {
+  background-color: #000;
+}
+
+/* Do not globally push the whole app down by the safe area. */
+html.rl7-ios body > #app.phone-frame {
+  margin-top: 0 !important;
+  top: 0 !important;
+  min-height: 100dvh;
+}
+
+/* Chat is one self-contained viewport. v65 JS writes these variables from visualViewport. */
+html.rl7-ios #page-chat-room.page-fullscreen.active {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: var(--rl7-chat-vv-top, 0px) !important;
+  height: var(--rl7-chat-vv-height, 100dvh) !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  bottom: auto !important;
+  overflow: hidden !important;
+  z-index: 10000 !important;
+}
+
+/* Never let call UI participate in chat-message stacking. */
+#call-active-overlay,
+#call-incoming-overlay,
+#call-picker-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 2147483000 !important;
+  isolation: isolate !important;
+}
+#call-active-panel,
+.call-incoming-panel {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  z-index: 1 !important;
+}
+
+/* Mini call bubble is viewport-fixed; JS supplies left/top while dragging. */
+#call-mini-bubble {
+  position: fixed !important;
+  z-index: 2147483001 !important;
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* Pat panel: v64's generic modal sweep made this pale-on-pale. Force readable dark glass. */
+#pat-overlay.black-overlay {
+  z-index: 2147482000 !important;
+}
+#pat-overlay .black-panel,
+#pat-overlay .pat-panel {
+  background: rgba(20, 22, 27, .96) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  -webkit-backdrop-filter: blur(22px) !important;
+  backdrop-filter: blur(22px) !important;
+}
+#pat-overlay .black-title,
+#pat-overlay label,
+#pat-overlay .pat-preset-a,
+#pat-overlay .pat-preset-b,
+#pat-overlay .pat-input-tag {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+#pat-overlay .pat-preset-card,
+#pat-overlay .black-input,
+#pat-overlay .black-btn {
+  background: rgba(255,255,255,.10) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  border-color: rgba(255,255,255,.16) !important;
+}
+#pat-overlay .black-input::placeholder {
+  color: rgba(255,255,255,.48) !important;
+  -webkit-text-fill-color: rgba(255,255,255,.48) !important;
+}
+#pat-overlay .black-btn-primary {
+  background: rgba(255,255,255,.18) !important;
+}
