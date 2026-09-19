@@ -1,0 +1,40 @@
+/* RL7 V75 — actual game invite + shop pay request.
+   Both use the existing Liquid Glass slider variables. */
+html.liquid-theme #page-chat-room .message-body.rl7-game-invite-shell{
+  width:min(520px,calc(100vw - 92px))!important;
+  max-width:min(520px,calc(100vw - 92px))!important;
+  box-sizing:border-box!important;
+  padding:0!important;
+  border-radius:22px!important;
+  background:rgba(20,20,20,var(--lg-alpha))!important;
+  border:1px solid var(--lg-border)!important;
+  box-shadow:inset 0 1px 0 var(--lg-highlight),0 12px 34px var(--lg-shadow)!important;
+  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+  backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+  overflow:hidden!important;color:#fff!important
+}
+/* Game invite may itself be implemented as a "message-bubble"; neutralize its transparent
+   bubble skin so the shell behind it is visible. This is intentionally scoped only to
+   rows positively identified from game invitation text. */
+html.liquid-theme #page-chat-room .rl7-game-invite-row .message-bubble.rl7-game-invite-card,
+html.liquid-theme #page-chat-room .rl7-game-invite-row .message-bubble{
+  width:100%!important;max-width:none!important;box-sizing:border-box!important;
+  background:transparent!important;background-color:transparent!important;
+  border:0!important;box-shadow:none!important;
+  color:#fff!important;-webkit-text-fill-color:currentColor!important;
+  padding:14px 16px!important;border-radius:0!important
+}
+html.liquid-theme #page-chat-room .rl7-game-invite-row .message-body :is(h1,h2,h3,h4,b,strong,[class*="title"],[class*="name"]){color:#fff!important;-webkit-text-fill-color:#fff!important}
+html.liquid-theme #page-chat-room .rl7-game-invite-row .message-body :is(p,small,[class*="desc"],[class*="subtitle"]){color:rgba(255,255,255,.78)!important;-webkit-text-fill-color:rgba(255,255,255,.78)!important}
+
+/* Interactive two-choice pay request. Same slider-controlled glass source as Settings / shop cards. */
+html.liquid-theme #page-chat-room .rl7-shop-pay-card{
+ width:min(330px,76vw)!important;padding:16px!important;border-radius:21px!important;
+ background:rgba(20,20,20,var(--lg-alpha))!important;border:1px solid var(--lg-border)!important;
+ box-shadow:inset 0 1px 0 var(--lg-highlight),0 12px 34px var(--lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important
+}
+.rl7-pay-head{display:flex;align-items:center;gap:11px}.rl7-pay-icon{font-size:30px;width:42px;height:42px;display:grid;place-items:center}.rl7-pay-head div{display:flex;flex-direction:column;gap:2px}.rl7-pay-head b{font-size:15px}.rl7-pay-head small{font-size:12px;opacity:.72}.rl7-pay-desc{font-size:12px;line-height:1.45;opacity:.72;margin-top:9px}.rl7-pay-question{font-size:13px;font-weight:750;margin:13px 0 8px}.rl7-pay-options{display:grid!important;gap:6px!important}.rl7-pay-option{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.12);font-size:12px}.rl7-pay-option.picked{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.34);font-weight:750}.rl7-pay-result,.rl7-pay-wait{margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.13);font-size:11px;opacity:.82}.rl7-pay-wait .pulse-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;animation:decisionPulse 1.2s infinite}
+/* v38 must not hide the display-only choices on this card; there are no clickable buttons. */
+#page-chat-room .message-row.self .rl7-shop-pay-card .rl7-card-actions[data-display-only="1"]{display:grid!important}
