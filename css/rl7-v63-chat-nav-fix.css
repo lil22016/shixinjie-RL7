@@ -1,0 +1,9 @@
+/* RL7 v63 — chat room must be truly fullscreen.
+   Hide the main four-tab index bar only while #page-chat-room is active.
+   No keyboard geometry and no wallpaper/top-edge changes in this patch. */
+#app:has(#page-chat-room.page-fullscreen.active) > .bottom-nav{
+  display:none !important;
+}
+#page-chat-room.page-fullscreen.active{
+  z-index:10000 !important;
+}
