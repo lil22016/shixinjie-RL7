@@ -1,0 +1,201 @@
+/* RL7 V67 — dark readability + compact calls
+   IMPORTANT: this stylesheet is intentionally loaded LAST, after decision.css and v65.
+*/
+
+/* ---------- CALL: undo the v65 fullscreen regression ---------- */
+#call-active-overlay,
+#call-incoming-overlay,
+#call-picker-overlay{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:2147483000!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+}
+#call-active-overlay{pointer-events:none!important}
+#call-active-overlay #call-active-panel{
+  position:relative!important;
+  inset:auto!important;
+  width:min(340px,calc(100vw - 56px))!important;
+  height:auto!important;
+  min-height:0!important;
+  max-width:340px!important;
+  max-height:min(520px,calc(100dvh - 80px))!important;
+  padding:24px 18px 22px!important;
+  border-radius:26px!important;
+  pointer-events:auto!important;
+  overflow:hidden!important;
+}
+#call-incoming-overlay .call-incoming-panel{
+  position:relative!important;
+  inset:auto!important;
+  width:min(340px,calc(100vw - 56px))!important;
+  height:auto!important;
+  min-height:0!important;
+  max-width:340px!important;
+  max-height:min(520px,calc(100dvh - 80px))!important;
+}
+#call-picker-overlay .call-picker-panel{
+  position:relative!important;
+  inset:auto!important;
+  width:min(300px,calc(100vw - 64px))!important;
+  height:auto!important;
+  min-height:0!important;
+  max-width:300px!important;
+  max-height:calc(100dvh - 80px)!important;
+}
+
+/* ---------- CHAT: cards must have a real surface, never fully transparent ---------- */
+html.liquid-theme #page-chat-room :is(
+  .rl7-action-card,
+  .gift-card,
+  .decision-card,
+  .game-card,
+  .game-invite-card,
+  .invite-card,
+  .shop-card,
+  .product-card,
+  [class*="game"][class*="card"],
+  [class*="invite"][class*="card"],
+  [class*="shop"][class*="card"],
+  [class*="product"][class*="card"]
+){
+  background:rgba(18,20,25,.94)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.15)!important;
+  box-shadow:0 8px 28px rgba(0,0,0,.26)!important;
+  backdrop-filter:blur(18px) saturate(120%)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(120%)!important;
+}
+html.liquid-theme #page-chat-room :is(
+  .rl7-action-card,.gift-card,.decision-card,.game-card,.game-invite-card,.invite-card,.shop-card,.product-card,
+  [class*="game"][class*="card"],[class*="invite"][class*="card"],[class*="shop"][class*="card"],[class*="product"][class*="card"]
+) :is(h1,h2,h3,h4,strong,b,.title,[class*="title"],[class*="name"]){
+  color:#fff!important;
+}
+html.liquid-theme #page-chat-room :is(
+  .rl7-action-card,.gift-card,.decision-card,.game-card,.game-invite-card,.invite-card,.shop-card,.product-card,
+  [class*="game"][class*="card"],[class*="invite"][class*="card"],[class*="shop"][class*="card"],[class*="product"][class*="card"]
+) :is(p,small,.sub,[class*="desc"],[class*="subtitle"],[class*="meta"]){
+  color:rgba(255,255,255,.72)!important;
+}
+
+/* ---------- MOMENTS: no wallpaper showing through the timeline ---------- */
+html.liquid-theme #page-moments,
+html.liquid-theme #page-moments .moments-page,
+html.liquid-theme #page-moments .moments-feed{
+  background:#0d0f13!important;
+}
+html.liquid-theme #page-moments .moments-toolbar{
+  background:#111318!important;
+}
+html.liquid-theme #page-moments .moment-card{
+  background:#17191e!important;
+  border-color:rgba(255,255,255,.13)!important;
+}
+
+/* ---------- Shared readable dark glass ---------- */
+html.liquid-theme{
+  --v67-surface:rgba(20,22,27,.88);
+  --v67-surface-strong:rgba(18,20,25,.95);
+  --v67-surface-soft:rgba(255,255,255,.10);
+  --v67-line:rgba(255,255,255,.15);
+  --v67-text:#fff;
+  --v67-muted:rgba(255,255,255,.72);
+}
+
+/* Mailbox: both tabs, incoming/outgoing letters, empty states, detail/editor */
+html.liquid-theme #page-mailbox :is(.mailbox-tabs,.letter-note,.mailbox-empty,.mailbox-write-card),
+html.liquid-theme #page-mailbox-detail :is(.detail-letter,.letter-note),
+html.liquid-theme #page-write-letter :is(.letter-editor-note,.letter-announce-option,.letter-card-chip),
+html.liquid-theme #page-mailbox-reply :is(.letter-editor-note,.letter-announce-option,.letter-card-chip){
+  background:var(--v67-surface)!important;
+  color:var(--v67-text)!important;
+  border-color:var(--v67-line)!important;
+  backdrop-filter:blur(18px) saturate(120%)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(120%)!important;
+}
+html.liquid-theme #page-mailbox .mailbox-tab{color:var(--v67-muted)!important}
+html.liquid-theme #page-mailbox .mailbox-tab.is-active{
+  background:rgba(255,255,255,.16)!important;color:#fff!important;
+}
+
+/* Whereabouts reports and editor/library cards */
+html.liquid-theme :is(#page-whereabout-reports,#page-whereabouts,#page-whereabout-group)
+:is(.whereabouts-hint,.whereabout-report,.discover-list,.discover-item,.card-list-item){
+  background:var(--v67-surface)!important;
+  color:#fff!important;
+  border-color:var(--v67-line)!important;
+}
+
+/* Favorites / purchases */
+html.liquid-theme :is(#page-favorites,#page-his-favorites,#page-his-favorites-group)
+:is(.favorite-item,.favorites-group-count,.favorite-decision-opt){
+  background:var(--v67-surface)!important;
+  color:#fff!important;
+  border-color:var(--v67-line)!important;
+  backdrop-filter:blur(18px) saturate(120%)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(120%)!important;
+}
+html.liquid-theme .his-favorites-list .favorite-item{
+  border-radius:var(--radius-lg)!important;
+}
+
+/* Wordcard / quote / daily-message / pat libraries and group contents */
+html.liquid-theme :is(
+ #page-wordcard-main,#page-wordcard-main-group,#page-wordcard-sub-main,#page-wordcard-sub-group,
+ #page-wordcard-pat,#page-wordcard-pat-group,#page-wordcard-quotes,#page-wordcard-daily-quotes,
+ #page-wordcard-voice,#page-wordcard-voice-group,#page-wordcard-kaomoji,#page-wordcard-kaomoji-group,
+ #page-wordcard-emoji,#page-wordcard-emoji-group,#page-wordcard-stickers,#page-wordcard-stickers-group
+) :is(.discover-list,.discover-item,.card-list-item,.word-card,.quote-item,.quotes-item,[class*="quote"][class*="item"]){
+  background:var(--v67-surface)!important;
+  color:#fff!important;
+  border-color:var(--v67-line)!important;
+  backdrop-filter:blur(18px) saturate(120%)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(120%)!important;
+}
+
+/* Common text on the affected feature pages */
+html.liquid-theme :is(
+ #page-mailbox,#page-mailbox-detail,#page-write-letter,#page-mailbox-reply,
+ #page-whereabout-reports,#page-whereabouts,#page-whereabout-group,
+ #page-favorites,#page-his-favorites,#page-his-favorites-group,
+ [id^="page-wordcard"]
+) :is(.card-list-item-text,.favorite-item-text,.letter-note-content,.detail-letter-content,
+      .whereabout-report-text,.discover-title,.quotes-text,[class*="quote"][class*="text"]){
+  color:#fff!important;
+  text-shadow:0 1px 3px rgba(0,0,0,.55)!important;
+}
+html.liquid-theme :is(
+ #page-mailbox,#page-mailbox-detail,#page-write-letter,#page-mailbox-reply,
+ #page-whereabout-reports,#page-whereabouts,#page-whereabout-group,
+ #page-favorites,#page-his-favorites,#page-his-favorites-group,
+ [id^="page-wordcard"]
+) :is(.letter-time,.letter-status,.favorite-item-meta,.card-list-item-source,.discover-desc,
+      .whereabout-report-time,.whereabouts-hint){
+  color:var(--v67-muted)!important;
+  text-shadow:0 1px 3px rgba(0,0,0,.55)!important;
+}
+
+/* Any modal opened from quote/message/pat/card management: decision.css has a late pure-white rule. */
+html.liquid-theme :is(.modal-panel,.form-modal-panel,.black-panel,.pat-panel,.card-modal-panel,.quote-picker-panel){
+  background:var(--v67-surface-strong)!important;
+  color:#fff!important;
+  border-color:var(--v67-line)!important;
+}
+html.liquid-theme :is(.modal-panel,.form-modal-panel,.black-panel,.pat-panel,.card-modal-panel,.quote-picker-panel)
+:is(input:not([type="checkbox"]):not([type="radio"]),textarea,select,.pat-preset-card,.black-preset-item){
+  background:rgba(255,255,255,.10)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  border-color:var(--v67-line)!important;
+}
+html.liquid-theme :is(.modal-panel,.form-modal-panel,.black-panel,.pat-panel,.card-modal-panel,.quote-picker-panel)
+:is(input,textarea)::placeholder{
+  color:rgba(255,255,255,.5)!important;
+  -webkit-text-fill-color:rgba(255,255,255,.5)!important;
+}
