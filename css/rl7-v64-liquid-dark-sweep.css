@@ -1,0 +1,201 @@
+/* RL7 v64 — Liquid Glass dark-surface sweep
+   Visual-only. No viewport, keyboard, navigation, or data logic. */
+
+html.liquid-theme{
+  --rl7-dark:#17191e;
+  --rl7-dark2:#20232a;
+  --rl7-dark3:#292d35;
+  --rl7-line:rgba(255,255,255,.16);
+  --rl7-soft:rgba(255,255,255,.10);
+  --rl7-text:#fff;
+  --rl7-muted:rgba(255,255,255,.72);
+}
+
+/* HOME: remove page-level blur. Keep blur only on individual glass cards. */
+html.liquid-theme #page-home,
+html.liquid-theme #page-home::before,
+html.liquid-theme #page-home::after,
+html.liquid-theme #page-home .home-page,
+html.liquid-theme #page-home .home-content{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  filter:none!important;
+}
+html.liquid-theme #page-home .top-nav,
+html.liquid-theme #page-home .page-header{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  background:transparent!important;
+}
+
+/* MOMENTS: whole feed uses dark surfaces instead of pale separators/cards. */
+html.liquid-theme #page-moments,
+html.liquid-theme #page-moments .moments-page,
+html.liquid-theme #page-moments .moments-feed{
+  background:transparent!important;
+}
+html.liquid-theme #page-moments .moment-card{
+  background:rgba(20,22,27,.78)!important;
+  border-color:var(--rl7-line)!important;
+  color:var(--rl7-text)!important;
+}
+html.liquid-theme #page-moments .moment-likes,
+html.liquid-theme #page-moments .moment-comments,
+html.liquid-theme #page-moments .moment-quote-card{
+  background:rgba(31,34,41,.88)!important;
+  border-color:var(--rl7-line)!important;
+}
+html.liquid-theme #page-moments .moment-action-btn,
+html.liquid-theme #page-moments .moments-option,
+html.liquid-theme #page-moments .moments-card-picker-item,
+html.liquid-theme #page-moments .moments-upload-btn{
+  background:var(--rl7-dark3)!important;
+  color:var(--rl7-text)!important;
+  border-color:var(--rl7-line)!important;
+}
+html.liquid-theme .moments-sheet,
+html.liquid-theme .moments-panel{
+  background:rgba(23,25,30,.97)!important;
+  border:1px solid var(--rl7-line)!important;
+  color:var(--rl7-text)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+html.liquid-theme #moments-comment-input,
+html.liquid-theme .moments-comment-box input,
+html.liquid-theme .moments-form-input,
+html.liquid-theme .moments-card-picker-search{
+  background:var(--rl7-dark3)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  caret-color:#fff!important;
+  border:1px solid var(--rl7-line)!important;
+}
+html.liquid-theme #moments-comment-input::placeholder,
+html.liquid-theme .moments-comment-box input::placeholder,
+html.liquid-theme .moments-form-input::placeholder,
+html.liquid-theme .moments-card-picker-search::placeholder{
+  color:rgba(255,255,255,.55)!important;
+  -webkit-text-fill-color:rgba(255,255,255,.55)!important;
+}
+html.liquid-theme .moments-comment-box button{
+  background:rgba(255,255,255,.16)!important;
+  color:#fff!important;
+}
+html.liquid-theme #page-moments .moment-card-author,
+html.liquid-theme #page-moments .moment-card-text,
+html.liquid-theme #page-moments .moment-comment .c-name,
+html.liquid-theme #page-moments .moment-comment .c-text,
+html.liquid-theme .moments-panel-title{
+  color:#fff!important;
+}
+html.liquid-theme #page-moments .moment-card-source,
+html.liquid-theme #page-moments .moment-card-time,
+html.liquid-theme #page-moments .moment-quote-label,
+html.liquid-theme #page-moments .moment-quote-text{
+  color:var(--rl7-muted)!important;
+}
+
+/* WORD CARD library + add/edit panels. */
+html.liquid-theme .wordcard-search-input,
+html.liquid-theme .toolbar-btn,
+html.liquid-theme .wordcard-toolbar input,
+html.liquid-theme .wordcard-toolbar button,
+html.liquid-theme [id^="page-wordcard"] input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+html.liquid-theme [id^="page-wordcard"] textarea,
+html.liquid-theme [id^="page-wordcard"] select{
+  background:var(--rl7-dark3)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  border-color:var(--rl7-line)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+html.liquid-theme [id^="page-wordcard"] input::placeholder,
+html.liquid-theme [id^="page-wordcard"] textarea::placeholder{
+  color:rgba(255,255,255,.52)!important;
+  -webkit-text-fill-color:rgba(255,255,255,.52)!important;
+}
+html.liquid-theme [id^="page-wordcard"] .word-card,
+html.liquid-theme [id^="page-wordcard"] .wordcard-group-card,
+html.liquid-theme [id^="page-wordcard"] .wordcard-card,
+html.liquid-theme [id^="page-wordcard"] .discover-list,
+html.liquid-theme [id^="page-wordcard"] .discover-item,
+html.liquid-theme [id^="page-wordcard"] .settings-list,
+html.liquid-theme [id^="page-wordcard"] .settings-item{
+  background:rgba(23,25,30,.80)!important;
+  color:#fff!important;
+  border-color:var(--rl7-line)!important;
+}
+html.liquid-theme [id^="page-wordcard"] .form-modal-panel,
+html.liquid-theme [id^="page-wordcard"] .modal-panel,
+html.liquid-theme .form-modal-panel,
+html.liquid-theme .modal-panel{
+  background:rgba(23,25,30,.97)!important;
+  color:#fff!important;
+  border:1px solid var(--rl7-line)!important;
+}
+html.liquid-theme .form-modal-panel input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+html.liquid-theme .form-modal-panel textarea,
+html.liquid-theme .form-modal-panel select,
+html.liquid-theme .modal-panel input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+html.liquid-theme .modal-panel textarea,
+html.liquid-theme .modal-panel select{
+  background:var(--rl7-dark3)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  border-color:var(--rl7-line)!important;
+}
+
+/* SETTINGS / feature subpages: bubble shop, whereabouts, account/settings forms, etc. */
+html.liquid-theme [id^="page-"][id$="-settings"] .settings-list,
+html.liquid-theme [id^="page-"][id$="-settings"] .settings-section,
+html.liquid-theme [id^="page-"][id$="-settings"] .settings-item,
+html.liquid-theme #page-settings .settings-list,
+html.liquid-theme #page-settings .settings-section,
+html.liquid-theme #page-settings .settings-item,
+html.liquid-theme #page-bubble-shop .settings-list,
+html.liquid-theme #page-bubble-shop .settings-section,
+html.liquid-theme #page-bubble-shop .settings-item,
+html.liquid-theme #page-whereabouts .settings-list,
+html.liquid-theme #page-whereabouts .settings-section,
+html.liquid-theme #page-whereabouts .settings-item{
+  background:rgba(23,25,30,.82)!important;
+  color:#fff!important;
+  border-color:var(--rl7-line)!important;
+}
+html.liquid-theme [id^="page-"][id$="-settings"] input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+html.liquid-theme [id^="page-"][id$="-settings"] textarea,
+html.liquid-theme [id^="page-"][id$="-settings"] select,
+html.liquid-theme #page-bubble-shop input,
+html.liquid-theme #page-bubble-shop textarea,
+html.liquid-theme #page-whereabouts input,
+html.liquid-theme #page-whereabouts textarea{
+  background:var(--rl7-dark3)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  border-color:var(--rl7-line)!important;
+}
+
+/* Common white cards/buttons missed by older files. */
+html.liquid-theme .glass-input,
+html.liquid-theme .status-select-wrap,
+html.liquid-theme .avatar-upload-area{
+  background:var(--rl7-dark3)!important;
+  color:#fff!important;
+  border-color:var(--rl7-line)!important;
+}
+html.liquid-theme .glass-btn:not(.primary),
+html.liquid-theme .avatar-shape-toggle{
+  background:rgba(255,255,255,.10)!important;
+  color:#fff!important;
+  border-color:var(--rl7-line)!important;
+}
+
+/* If WebKit paints the document/root canvas instead of the wallpaper,
+   use black rather than white. This cannot recolor Safari browser chrome
+   outside the document, but makes every document-owned exposed edge dark. */
+html.liquid-theme,
+html.liquid-theme body{
+  background-color:#000!important;
+}
