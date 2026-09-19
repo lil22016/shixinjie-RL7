@@ -97,10 +97,11 @@ function installBubbleDrag(){
     function up(e){
       if(!dragging)return; dragging=false; bubble.style.transition='';
       var p=point(e), now=Date.now();
-      if(!moved && !hang(e) && now-lastT<350 && Math.abs(p.clientX-lastX)<12 && Math.abs(p.clientY-lastY)<12){
-        lastT=0; if(typeof window.restoreCall==='function')window.restoreCall(); return;
+      /* v66: a single clean tap restores the compact call panel. Dragging still only moves the bubble. */
+      if(!moved && !hang(e)){
+        if(typeof window.restoreCall==='function') window.restoreCall();
+        return;
       }
-      if(!moved){lastT=now;lastX=p.clientX;lastY=p.clientY;}
       moved=false;
     }
     bubble.addEventListener('touchstart',down,{passive:false});
