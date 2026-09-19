@@ -4,15 +4,11 @@
 
 .page-fullscreen {
   display: none;
-  position: fixed !important;
-  /* 修复6：iOS Safari 软键盘弹起时 UA 会主动滚动/平移可视视口使输入框可见，fixed 层不随可视区移动
-     导致聊天页整体上移错位、露出下层首页。--chat-offset 由 app.js 按 visualViewport.offsetTop 写入，
-     把聊天页顶部拉回可视区顶部；桌面/无键盘时该变量恒为 0，布局不变。 */
-  top: var(--chat-offset, 0px); left: 0; right: 0;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: var(--chat-h, calc(100% - var(--kbd, 0px)));
-  padding-bottom: 0 !important;
-  padding-top: 0 !important;
+  height: 100%;
+  padding: 0;
   z-index: 210;
   flex-direction: column;
   background: var(--bg-gradient, var(--bg-main, #f5f5f7));
