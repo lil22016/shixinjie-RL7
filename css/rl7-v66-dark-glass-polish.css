@@ -1,0 +1,237 @@
+/* RL7 v66 — dark glass consistency + v65 call-size correction
+   Visual-only. Keeps v65 keyboard and draggable mini-call fixes. */
+
+html.liquid-theme{
+  --rl7-glass-dark: rgba(20,22,27,.78);
+  --rl7-glass-dark-strong: rgba(20,22,27,.90);
+  --rl7-glass-line: rgba(255,255,255,.16);
+  --rl7-glass-soft: rgba(255,255,255,.10);
+  --rl7-glass-muted: rgba(255,255,255,.68);
+}
+
+/* v65 accidentally expanded the active/incoming call panel to the whole viewport.
+   Keep only the overlay on top; restore the original compact panel geometry. */
+#call-active-overlay,
+#call-incoming-overlay,
+#call-picker-overlay{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:2147483000!important;
+}
+#call-active-overlay{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+  pointer-events:none!important;
+}
+#call-active-panel{
+  position:relative!important;
+  inset:auto!important;
+  width:360px!important;
+  max-width:calc(100vw - 48px)!important;
+  height:auto!important;
+  max-height:calc(100dvh - 120px)!important;
+  border-radius:26px!important;
+  padding:30px 20px 26px!important;
+  overflow:hidden!important;
+  pointer-events:auto!important;
+}
+#call-incoming-overlay{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  padding-top:max(72px, env(safe-area-inset-top))!important;
+}
+#call-incoming-overlay .call-incoming-panel{
+  position:relative!important;
+  inset:auto!important;
+  width:330px!important;
+  max-width:calc(100vw - 48px)!important;
+  height:auto!important;
+  max-height:calc(100dvh - 120px)!important;
+  border-radius:26px!important;
+}
+
+/* PAT: actual UI is card-modal-* (not the old #pat-overlay selectors). */
+html.liquid-theme .card-modal-overlay{
+  background:rgba(0,0,0,.18)!important;
+}
+html.liquid-theme .card-modal-panel{
+  background:var(--rl7-glass-dark-strong)!important;
+  border:1px solid var(--rl7-glass-line)!important;
+  color:#fff!important;
+  -webkit-backdrop-filter:blur(24px) saturate(135%)!important;
+  backdrop-filter:blur(24px) saturate(135%)!important;
+  box-shadow:0 18px 50px rgba(0,0,0,.32)!important;
+}
+html.liquid-theme .card-modal-title,
+html.liquid-theme .card-modal-label,
+html.liquid-theme .card-modal-static,
+html.liquid-theme .card-modal-hint,
+html.liquid-theme .pat-part-text,
+html.liquid-theme .card-modal-toggle-label{
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+}
+html.liquid-theme .card-modal-hint,
+html.liquid-theme .card-modal-label{
+  color:var(--rl7-glass-muted)!important;
+  -webkit-text-fill-color:var(--rl7-glass-muted)!important;
+}
+html.liquid-theme .pat-part,
+html.liquid-theme .card-modal-static,
+html.liquid-theme .card-modal-textarea,
+html.liquid-theme .card-modal-field,
+html.liquid-theme .card-modal-select,
+html.liquid-theme .card-modal-btn-cancel{
+  background:rgba(255,255,255,.10)!important;
+  border-color:var(--rl7-glass-line)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+}
+html.liquid-theme .card-modal-textarea::placeholder,
+html.liquid-theme .card-modal-field::placeholder{
+  color:rgba(255,255,255,.48)!important;
+  -webkit-text-fill-color:rgba(255,255,255,.48)!important;
+}
+
+/* One consistent Discover-style dark glass for Word Cards and Settings. */
+html.liquid-theme #page-wordcard > .discover-list,
+html.liquid-theme [id^="page-wordcard"] > .discover-list,
+html.liquid-theme #page-settings .settings-list,
+html.liquid-theme [id^="page-"][id$="-settings"] .settings-list{
+  background:var(--rl7-glass-dark)!important;
+  border:1px solid var(--rl7-glass-line)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(135%)!important;
+  backdrop-filter:blur(24px) saturate(135%)!important;
+  box-shadow:0 12px 34px rgba(0,0,0,.20)!important;
+}
+html.liquid-theme #page-wordcard .discover-item,
+html.liquid-theme [id^="page-wordcard"] .discover-item,
+html.liquid-theme #page-settings .settings-item,
+html.liquid-theme [id^="page-"][id$="-settings"] .settings-item{
+  background:transparent!important;
+  color:#fff!important;
+  border-color:var(--rl7-glass-line)!important;
+}
+html.liquid-theme #page-wordcard .discover-title,
+html.liquid-theme #page-wordcard .discover-desc,
+html.liquid-theme [id^="page-wordcard"] .discover-title,
+html.liquid-theme [id^="page-wordcard"] .discover-desc,
+html.liquid-theme #page-settings .s-label,
+html.liquid-theme #page-settings .s-value,
+html.liquid-theme [id^="page-"][id$="-settings"] .s-label,
+html.liquid-theme [id^="page-"][id$="-settings"] .s-value{
+  color:#fff!important;
+}
+html.liquid-theme #page-wordcard .discover-desc,
+html.liquid-theme [id^="page-wordcard"] .discover-desc,
+html.liquid-theme #page-settings .s-value,
+html.liquid-theme [id^="page-"][id$="-settings"] .s-value{
+  color:var(--rl7-glass-muted)!important;
+}
+
+/* Mailbox / letter composer / letter detail: eliminate white-on-white cards. */
+html.liquid-theme [id*="mailbox"] .mailbox-section,
+html.liquid-theme [id*="mailbox"] .mailbox-empty,
+html.liquid-theme [id*="mailbox"] .mailbox-write-card,
+html.liquid-theme [id*="mailbox"] .mailbox-tabs,
+html.liquid-theme [id*="mailbox"] .mailbox-detail-body,
+html.liquid-theme [id*="mailbox"] .letter-settings-card,
+html.liquid-theme [id*="mailbox"] .mail-item,
+html.liquid-theme [id*="mail"] .mailbox-section,
+html.liquid-theme [id*="mail"] .mailbox-write-card,
+html.liquid-theme [id*="mail"] .mailbox-detail-body,
+html.liquid-theme [id*="mail"] .letter-settings-card,
+html.liquid-theme [id*="mail"] .mail-item{
+  background:var(--rl7-glass-dark)!important;
+  border-color:var(--rl7-glass-line)!important;
+  color:#fff!important;
+  -webkit-backdrop-filter:blur(22px) saturate(130%)!important;
+  backdrop-filter:blur(22px) saturate(130%)!important;
+}
+html.liquid-theme [id*="mail"] input:not([type="checkbox"]):not([type="radio"]),
+html.liquid-theme [id*="mail"] textarea,
+html.liquid-theme [id*="mail"] select{
+  background:rgba(20,22,27,.72)!important;
+  border:1px solid var(--rl7-glass-line)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  caret-color:#fff!important;
+}
+html.liquid-theme [id*="mail"] input::placeholder,
+html.liquid-theme [id*="mail"] textarea::placeholder{
+  color:rgba(255,255,255,.52)!important;
+  -webkit-text-fill-color:rgba(255,255,255,.52)!important;
+}
+
+/* Favorites — both mine and Loki's. */
+html.liquid-theme .favorites-list .favorite-item,
+html.liquid-theme .his-favorites-list .favorite-item,
+html.liquid-theme .favorites-group-count,
+html.liquid-theme .his-favorites-list .favorites-group-count,
+html.liquid-theme .favorite-decision,
+html.liquid-theme .favorite-gift{
+  background:var(--rl7-glass-dark)!important;
+  border-color:var(--rl7-glass-line)!important;
+  color:#fff!important;
+  -webkit-backdrop-filter:blur(22px) saturate(130%)!important;
+  backdrop-filter:blur(22px) saturate(130%)!important;
+}
+html.liquid-theme .favorite-item-text,
+html.liquid-theme .favorite-item-meta,
+html.liquid-theme .favorite-item-from,
+html.liquid-theme .favorite-decision-question,
+html.liquid-theme .favorite-decision-text,
+html.liquid-theme .favorite-gift-name,
+html.liquid-theme .favorite-gift-greeting{
+  color:#fff!important;
+}
+html.liquid-theme .favorite-decision-opt,
+html.liquid-theme .favorite-item-remove{
+  background:rgba(255,255,255,.10)!important;
+  border-color:var(--rl7-glass-line)!important;
+  color:#fff!important;
+}
+
+/* Whereabouts report cards. */
+html.liquid-theme #page-whereabouts .whereabouts-hint,
+html.liquid-theme #page-whereabouts .whereabout-report,
+html.liquid-theme [id*="whereabout"] .whereabouts-hint,
+html.liquid-theme [id*="whereabout"] .whereabout-report{
+  background:var(--rl7-glass-dark)!important;
+  border:1px solid var(--rl7-glass-line)!important;
+  color:#fff!important;
+  -webkit-backdrop-filter:blur(22px) saturate(130%)!important;
+  backdrop-filter:blur(22px) saturate(130%)!important;
+}
+html.liquid-theme .whereabout-report-author,
+html.liquid-theme .whereabout-report-time,
+html.liquid-theme .whereabout-report-text,
+html.liquid-theme .whereabouts-hint{
+  color:#fff!important;
+}
+html.liquid-theme .whereabout-report-time{
+  color:var(--rl7-glass-muted)!important;
+}
+
+/* Broad safety net for recurring light card variables on the named dark-glass pages. */
+html.liquid-theme #page-settings,
+html.liquid-theme #page-wordcard,
+html.liquid-theme [id^="page-wordcard"],
+html.liquid-theme [id*="mail"],
+html.liquid-theme [id*="favorite"],
+html.liquid-theme [id*="whereabout"]{
+  --bg-card:var(--rl7-glass-dark)!important;
+  --card-bg:var(--rl7-glass-dark)!important;
+  --panel-light:var(--rl7-glass-dark)!important;
+  --bg-input:rgba(20,22,27,.72)!important;
+  --glass-bg:var(--rl7-glass-dark)!important;
+  --glass-solid:var(--rl7-glass-dark)!important;
+  --text-dark:#fff!important;
+  --text-medium:rgba(255,255,255,.86)!important;
+  --text-light:rgba(255,255,255,.68)!important;
+}
