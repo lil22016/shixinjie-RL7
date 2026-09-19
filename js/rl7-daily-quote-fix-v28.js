@@ -172,7 +172,7 @@ function style(){
  if(document.getElementById('rl7-liquid-v47-style'))return;
  let s=document.createElement('style');s.id='rl7-liquid-v47-style';s.textContent=`
 :root{--lg-blur:11.5px;--lg-alpha:.13;--lg-border:rgba(255,255,255,.42);--lg-highlight:rgba(255,255,255,.22);--lg-shadow:rgba(0,0,0,.20);--lg-text-shadow:0 2px 5px rgba(0,0,0,.72)}
-#rl7-liquid-wallpaper{display:none;position:fixed;inset:0;width:100vw;height:100dvh;z-index:-2;pointer-events:none;background-size:cover;background-position:center;background-repeat:no-repeat;transform:translateZ(0)}
+#rl7-liquid-wallpaper{display:none;position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;background-size:cover;background-position:center center;background-repeat:no-repeat}
 html.liquid-theme #rl7-liquid-wallpaper.visible{display:block}
 html.liquid-theme,html.liquid-theme body,html.liquid-theme #app.phone-frame{background:transparent!important}
 html.liquid-theme #app-bg{background:rgba(15,15,18,.08)!important;z-index:-1!important}
