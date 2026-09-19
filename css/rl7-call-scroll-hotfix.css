@@ -1,0 +1,101 @@
+/* RL7 call + chat scroll hotfix
+   Fixes:
+   1) compact active call panel (undo v65 fullscreen panel regression)
+   2) center call type picker
+   3) keep iOS swipe ownership inside .chat-messages and suppress page rubber-band
+*/
+
+/* Overlay may stay viewport-fixed, but the PANEL must remain compact. */
+#call-active-overlay,
+#call-incoming-overlay,
+#call-picker-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 2147483000 !important;
+}
+
+/* Active call: restore the intended small centered card. */
+#call-active-overlay {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+#call-active-panel {
+  position: relative !important;
+  inset: auto !important;
+  width: 360px !important;
+  height: auto !important;
+  max-width: calc(100vw - 48px) !important;
+  max-height: calc(100dvh - 48px) !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Incoming call also stays a compact card instead of inheriting v65 fullscreen dimensions. */
+#call-incoming-overlay {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+#call-incoming-overlay .call-incoming-panel {
+  position: relative !important;
+  inset: auto !important;
+  width: 340px !important;
+  height: auto !important;
+  max-width: calc(100vw - 48px) !important;
+  max-height: calc(100dvh - 48px) !important;
+}
+
+/* Call type chooser: explicitly center it; base .call-overlay currently top-aligns at 72px. */
+#call-picker-overlay {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+#call-picker-overlay .call-picker-panel {
+  position: relative !important;
+  inset: auto !important;
+  width: 300px !important;
+  height: auto !important;
+  max-width: calc(100vw - 56px) !important;
+  max-height: calc(100dvh - 48px) !important;
+}
+
+/* iOS chat scroll ownership.
+   The fullscreen chat itself must never become a second scroll container. */
+html.rl7-ios,
+html.rl7-ios body,
+html.rl7-ios body > #app.phone-frame,
+html.rl7-ios #page-chat-room.page-fullscreen.active {
+  overscroll-behavior: none !important;
+}
+
+html.rl7-ios #page-chat-room.page-fullscreen.active {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+/* Only the message list owns vertical pan gestures. */
+html.rl7-ios #page-chat-room.page-fullscreen.active .chat-messages {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y !important;
+}
+
+/* Interactive bottom controls keep normal taps; nested scrollable panels retain their own behavior. */
+html.rl7-ios #page-chat-room.page-fullscreen.active .chat-input-zone,
+html.rl7-ios #page-chat-room.page-fullscreen.active .chat-input-bar,
+html.rl7-ios #page-chat-room.page-fullscreen.active .chat-panel-area,
+html.rl7-ios #page-chat-room.page-fullscreen.active .plus-panel,
+html.rl7-ios #page-chat-room.page-fullscreen.active .sticker-panel {
+  touch-action: manipulation;
+}
