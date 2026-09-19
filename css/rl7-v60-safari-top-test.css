@@ -1,0 +1,40 @@
+/* RL7 v60 TEST — Safari top-strip + restore keyboard behavior
+   This is intentionally CSS-only.
+   Safari test: paint the ROOT canvas from the same liquid wallpaper variable/layer context,
+   and remove opaque page-shell backing at the very top.
+*/
+html.liquid-theme{
+  background-color:#202126!important;
+  background-image:none!important;
+  min-height:100%!important;
+}
+html.liquid-theme body{
+  margin:0!important;
+  min-height:100vh!important;
+  min-height:100dvh!important;
+  background:transparent!important;
+}
+html.liquid-theme body>#app,
+html.liquid-theme .phone-frame{
+  background:transparent!important;
+}
+html.liquid-theme #app-bg{
+  position:fixed!important;
+  inset:-100px 0 -100px 0!important;
+  min-height:calc(100dvh + 200px)!important;
+  z-index:0!important;
+  background:transparent!important;
+}
+html.liquid-theme #rl7-liquid-wallpaper{
+  position:fixed!important;
+  inset:-100px 0 -100px 0!important;
+  width:100vw!important;
+  height:calc(100dvh + 200px)!important;
+  z-index:0!important;
+  background-size:cover!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+}
+html.liquid-theme body>#app{position:relative!important;z-index:1!important}
+
+/* Do NOT alter .page padding here. Existing content spacing remains untouched. */
