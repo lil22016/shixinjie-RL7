@@ -1,0 +1,6 @@
+(function(){'use strict';if(window.__RL7_V72_TAG__)return;window.__RL7_V72_TAG__=1;
+var NORMAL='.message-bubble,.message-sticker-direct,.message-image,.redpacket-bubble,.voice-bubble,.message-pat,.message-call,.message-black-notice,.message-punish,.mail-announce-bubble,.recall-near,.rl7-private-frequency-card';
+function tag(row){if(!row||!row.querySelector)return;var b=row.querySelector('.message-body');if(!b||b.querySelector(NORMAL))return;var br=b.getBoundingClientRect();Array.from(b.children||[]).forEach(function(n){var r=n.getBoundingClientRect(),t=(n.innerText||n.textContent||'').trim();if(t&&r.width>=Math.min(170,br.width*.58)&&r.height>=52)n.classList.add('rl7-native-feature-card')})}
+function scan(x){var s=x&&x.querySelectorAll?x:document;if(s.matches&&s.matches('.message-row'))tag(s);s.querySelectorAll&&s.querySelectorAll('#page-chat-room .message-row').forEach(tag)}
+function boot(){scan(document);new MutationObserver(function(ms){ms.forEach(function(m){var r=m.target&&m.target.closest&&m.target.closest('.message-row');if(r)tag(r);(m.addedNodes||[]).forEach(function(n){if(n.nodeType===1)scan(n)})})}).observe(document.body,{childList:true,subtree:true,characterData:true});setInterval(function(){scan(document)},500)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot()})();
