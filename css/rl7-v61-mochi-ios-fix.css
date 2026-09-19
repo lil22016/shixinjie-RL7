@@ -1,0 +1,73 @@
+/* RL7 v61 — Mochi-style iOS viewport shell
+   Goal:
+   1) iOS Home Screen: app shell uses fixed top:0 + 100vh, not 100dvh.
+   2) Safari: root/body/app have no artificial top inset; safe area belongs to content headers only.
+   3) Liquid wallpaper is a fixed first-class viewport layer.
+*/
+html,body{
+  margin:0!important;
+  padding:0!important;
+}
+html.liquid-theme,
+html.liquid-theme body{
+  background:#202126!important;
+}
+html.liquid-theme body{
+  min-height:100vh!important;
+}
+html.liquid-theme #rl7-liquid-wallpaper{
+  position:fixed!important;
+  inset:auto!important;
+  top:0!important;
+  left:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  z-index:0!important;
+  background-size:cover!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+  transform:none!important;
+}
+html.liquid-theme #app-bg{background:transparent!important}
+html.liquid-theme #app.phone-frame{
+  position:relative!important;
+  z-index:1!important;
+  background:transparent!important;
+}
+
+/* Mochi's important distinction: standalone iOS shell is 100vh + fixed.
+   Do not use min-height:100dvh here; that can clamp JS keyboard resizing. */
+html.rl7-ios-standalone body{
+  width:100%!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  overflow:hidden!important;
+}
+html.rl7-ios-standalone #app.phone-frame{
+  position:fixed!important;
+  inset:auto!important;
+  top:0!important;
+  left:0!important;
+  width:100vw!important;
+  max-width:none!important;
+  height:100vh!important;
+  min-height:0!important;
+  margin:0!important;
+  overflow:hidden!important;
+}
+
+/* Chat is sized by its containing app shell. v61 JS may temporarily set
+   the app's inline height to visualViewport.height while the keyboard is open. */
+html.rl7-ios #page-chat-room.page-fullscreen.active{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+}
+
+/* Never put the safe-area on the whole page. Content that needs clearance owns it. */
+html.rl7-ios .chat-room-topbar{
+  padding-top:max(env(safe-area-inset-top,0px),0px);
+}
