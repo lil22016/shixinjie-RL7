@@ -1,0 +1,39 @@
+/* RL7 v54 TEST ONLY — safe-area/padding diagnosis
+   Purpose: test whether the top gap is caused by .page padding-top.
+   This intentionally changes ONLY top padding/safe-area behavior in Liquid theme.
+   If wallpaper reaches the top after this, we know the padding/safe-area path is the cause.
+*/
+
+/* Test A: remove the global page safe-top padding only in Liquid theme. */
+html.liquid-theme .page {
+  padding-top: 0 !important;
+}
+
+/* Keep full-screen chat at zero top padding on the page shell as well. */
+html.liquid-theme #page-chat-room.page,
+html.liquid-theme #page-chat-room.page-fullscreen {
+  padding-top: 0 !important;
+}
+
+/* Test B: neutralize the custom safe-top variable in Liquid theme.
+   Existing headers that explicitly use env(safe-area-inset-top) can still protect their controls. */
+html.liquid-theme {
+  --safe-top: 0px !important;
+}
+
+/* Wallpaper itself: deliberately extend upward by the native safe-area amount.
+   This is diagnostic and does not change horizontal/bottom page padding. */
+html.liquid-theme #rl7-liquid-wallpaper {
+  position: fixed !important;
+  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: calc(100dvh + env(safe-area-inset-top, 0px)) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
