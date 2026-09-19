@@ -1,22 +1,5 @@
 /* === 聊天功能 === */
 
-/* 修复5：iOS/安卓聚焦聊天输入框弹键盘期间，锁定 document 滚动，防止整页被顶起露出下层首页。
-   使用 focusin/focusout 事件委托（文件级一次性绑定，chat-input 为多流程共用元素，避免漏绑）。 */
-(function () {
-  document.addEventListener('focusin', function (e) {
-    var t = e.target;
-    if (t && t.id === 'chat-input') {
-      document.documentElement.classList.add('keyboard-lock');
-      if (window.scrollY > 0) window.scrollTo(0, 0);
-    }
-  });
-  document.addEventListener('focusout', function (e) {
-    var t = e.target;
-    if (t && t.id === 'chat-input') {
-      document.documentElement.classList.remove('keyboard-lock');
-    }
-  });
-})();
 
 /* 修复4：发送表情/图片期间给面板加 sheet-locked（临时禁用 max-height 过渡），
    避免键盘收起 + 异步插入大图重排叠加造成的界面闪动 */
