@@ -1,0 +1,31 @@
+/* RL7 V76 — opaque Moments timeline. */
+html.liquid-theme #page-moments,
+html.liquid-theme #page-moments .moments-page{
+ background:#111317!important;background-color:#111317!important;
+}
+html.liquid-theme #page-moments .moments-toolbar,
+html.liquid-theme #page-moments .moments-feed{
+ background:#111317!important;background-color:#111317!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+html.liquid-theme #page-moments .moment-card{
+ background:#1b1e24!important;background-color:#1b1e24!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+ border-color:rgba(255,255,255,.10)!important;
+}
+html.liquid-theme #page-moments .moment-likes,
+html.liquid-theme #page-moments .moment-comments{
+ background:#23272f!important;background-color:#23272f!important;
+}
+html.liquid-theme #page-moments :is(.moment-card-author,.moment-card-text,.moment-comment .c-text){
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+}
+html.liquid-theme #page-moments :is(.moment-card-source,.moment-card-time){
+ color:rgba(255,255,255,.64)!important;-webkit-text-fill-color:rgba(255,255,255,.64)!important;
+}
+html.liquid-theme #page-moments :is(.moment-action-btn,.moment-like-chip,.moment-comment .c-name){
+ color:rgba(255,255,255,.84)!important;
+}
+html.liquid-theme #page-moments .moment-action-btn{background:rgba(255,255,255,.08)!important}
+html.liquid-theme #page-moments .moments-toolbar{margin-bottom:0!important;border-bottom:0!important}
+html.liquid-theme #page-moments .moments-feed>.moment-card:first-child{margin-top:0!important}
