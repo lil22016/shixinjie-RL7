@@ -45,15 +45,33 @@ html.rl7-ios #page-chat-room.page-fullscreen.active {
   z-index: 2147483000 !important;
   isolation: isolate !important;
 }
-#call-active-panel,
-.call-incoming-panel {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
-  max-height: none !important;
+/* Keep call cards compact; only the overlay itself is promoted above chat. */
+#call-active-overlay,
+#call-incoming-overlay,
+#call-picker-overlay {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+#call-active-panel {
+  position: relative !important;
+  inset: auto !important;
+  width: 360px !important;
+  height: auto !important;
+  max-width: calc(100vw - 48px) !important;
+  max-height: calc(100dvh - 80px) !important;
   z-index: 1 !important;
+}
+.call-incoming-panel,
+.call-picker-panel {
+  position: relative !important;
+  inset: auto !important;
+  height: auto !important;
+  z-index: 1 !important;
+}
+.call-picker-panel {
+  width: 300px !important;
+  max-width: calc(100vw - 56px) !important;
 }
 
 /* Mini call bubble is viewport-fixed; JS supplies left/top while dragging. */
