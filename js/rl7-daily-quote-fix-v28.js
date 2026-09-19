@@ -137,3 +137,134 @@ function boot(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
+
+
+/* ===== RL7 Liquid Glass Theme v47 =====
+   Adapted from the user's reusable Liquid Glass kit:
+   fixed wallpaper plane + neutral blur + light borders + text shadow.
+*/
+(function(){'use strict';
+if(window.__RL7_LIQUID_GLASS_V47__)return;window.__RL7_LIQUID_GLASS_V47__=1;
+const DB='rl7_liquid_wallpaper_db_v1', STORE='wallpaper', KEY='home';
+function db(){return new Promise((res,rej)=>{try{let q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}})}
+async function getWall(){let d=await db();return new Promise((res,rej)=>{let q=d.transaction(STORE,'readonly').objectStore(STORE).get(KEY);q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)})}
+async function setWall(v){let d=await db();return new Promise((res,rej)=>{let q=d.transaction(STORE,'readwrite').objectStore(STORE).put(v,KEY);q.onsuccess=()=>res();q.onerror=()=>rej(q.error)})}
+async function delWall(){let d=await db();return new Promise((res,rej)=>{let q=d.transaction(STORE,'readwrite').objectStore(STORE).delete(KEY);q.onsuccess=()=>res();q.onerror=()=>rej(q.error)})}
+let url='';
+function layer(){
+ let x=document.getElementById('rl7-liquid-wallpaper');
+ if(!x){x=document.createElement('div');x.id='rl7-liquid-wallpaper';document.body.insertBefore(x,document.body.firstChild)}
+ return x;
+}
+async function restore(){
+ let b=null;try{b=await getWall()}catch(e){}
+ if(url){try{URL.revokeObjectURL(url)}catch(e){}url=''}
+ let x=layer();
+ if(b instanceof Blob){url=URL.createObjectURL(b);x.style.backgroundImage='url("'+url.replace(/"/g,'\\"')+'")';x.classList.add('visible')}
+ else{x.style.backgroundImage='none';x.classList.remove('visible')}
+}
+function active(){return window.ThemeManager&&ThemeManager.currentTheme==='liquid'}
+function applyLiquid(){
+ document.documentElement.classList.toggle('liquid-theme',active());
+ layer();
+}
+function style(){
+ if(document.getElementById('rl7-liquid-v47-style'))return;
+ let s=document.createElement('style');s.id='rl7-liquid-v47-style';s.textContent=`
+:root{--lg-blur:11.5px;--lg-alpha:.13;--lg-border:rgba(255,255,255,.42);--lg-highlight:rgba(255,255,255,.22);--lg-shadow:rgba(0,0,0,.20);--lg-text-shadow:0 2px 5px rgba(0,0,0,.72)}
+#rl7-liquid-wallpaper{display:none;position:fixed;inset:0;width:100vw;height:100dvh;z-index:-2;pointer-events:none;background-size:cover;background-position:center;background-repeat:no-repeat;transform:translateZ(0)}
+html.liquid-theme #rl7-liquid-wallpaper.visible{display:block}
+html.liquid-theme,html.liquid-theme body,html.liquid-theme #app.phone-frame{background:transparent!important}
+html.liquid-theme #app-bg{background:rgba(15,15,18,.08)!important;z-index:-1!important}
+html.liquid-theme .page{background:transparent!important;background-color:transparent!important}
+html.liquid-theme #page-home{background:transparent!important}
+html.liquid-theme{--primary:#f4f4f5;--primary-rgb:244,244,245;--primary-light:#fff;--primary-dark:#e4e4e7;--primary-soft:#f4f4f5;--primary-bg:rgba(255,255,255,.08);--bg-main:transparent;--bg-gradient:linear-gradient(160deg,rgba(0,0,0,.02),rgba(0,0,0,.08));--text-dark:#fff;--text-medium:rgba(255,255,255,.88);--text-light:rgba(255,255,255,.78);--text-lighter:rgba(255,255,255,.62);--glass-bg:rgba(20,20,20,var(--lg-alpha));--glass-border:1px solid var(--lg-border);--shadow-sm:0 8px 24px rgba(0,0,0,.16);--nav-active:#fff;--nav-label-active:#fff}
+html.liquid-theme .time-card,
+html.liquid-theme .journal-row,
+html.liquid-theme .rl7-home-companion-widget,
+html.liquid-theme .settings-list,
+html.liquid-theme .settings-section,
+html.liquid-theme .chat-item,
+html.liquid-theme .modal-panel,
+html.liquid-theme .form-modal-panel,
+html.liquid-theme .confirm-dialog,
+html.liquid-theme .recipe-shell,
+html.liquid-theme .love-page-container,
+html.liquid-theme .anniv-modal-panel,
+html.liquid-theme .anniv-form-panel,
+html.liquid-theme .dream-time-dialog,
+html.liquid-theme .status-picker-panel{
+ background:rgba(20,20,20,var(--lg-alpha))!important;
+ border:1px solid var(--lg-border)!important;
+ box-shadow:inset 0 1px 0 var(--lg-highlight),0 12px 34px var(--lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important
+}
+html.liquid-theme .home-feature-icon,
+html.liquid-theme .nav-icon-circle,
+html.liquid-theme button,
+html.liquid-theme .glass-btn,
+html.liquid-theme .settings-item .s-icon{
+ background:rgba(255,255,255,.09)!important;border-color:rgba(255,255,255,.30)!important;color:#fff!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 5px 16px rgba(0,0,0,.10)
+}
+html.liquid-theme .home-quote,html.liquid-theme .home-feature-label,html.liquid-theme .time-card,html.liquid-theme .journal-row,html.liquid-theme .bottom-nav,html.liquid-theme .page-header,html.liquid-theme .top-nav{text-shadow:var(--lg-text-shadow)}
+html.liquid-theme .bottom-nav{background:rgba(18,18,20,.16)!important;border-top:1px solid rgba(255,255,255,.22)!important;-webkit-backdrop-filter:blur(calc(var(--lg-blur)*1.15))!important;backdrop-filter:blur(calc(var(--lg-blur)*1.15))!important}
+html.liquid-theme input,html.liquid-theme textarea,html.liquid-theme select{background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.28)!important;color:#fff!important}
+html.liquid-theme .list-divider{background:rgba(255,255,255,.14)!important}
+.rl7-liquid-controls{margin-top:16px;padding:16px;border-radius:20px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.36)}
+.rl7-liquid-controls h4{margin:0 0 12px;font-size:14px;color:var(--text-dark)}
+.rl7-liquid-actions{display:flex;gap:8px;flex-wrap:wrap}.rl7-liquid-actions button{flex:1;min-width:110px;padding:10px 12px;border:0;border-radius:14px;background:rgba(var(--primary-rgb),.16);color:var(--text-dark);font-weight:700}
+.rl7-liquid-read{display:grid;grid-template-columns:80px 1fr 38px;gap:8px;align-items:center;margin-top:13px;font-size:12px;color:var(--text-medium)}
+.rl7-liquid-read input{width:100%}.rl7-liquid-note{margin-top:8px;font-size:10px;line-height:1.45;color:var(--text-light)}
+html.liquid-theme .rl7-liquid-controls{background:rgba(20,20,20,.16);border-color:rgba(255,255,255,.32);-webkit-backdrop-filter:blur(var(--lg-blur));backdrop-filter:blur(var(--lg-blur))}
+@media(prefers-reduced-transparency:reduce){html.liquid-theme .time-card,html.liquid-theme .journal-row,html.liquid-theme .settings-list,html.liquid-theme .chat-item{background:rgba(24,24,24,.72)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}}
+`;document.head.appendChild(s);
+}
+function readability(v){
+ v=Math.max(0,Math.min(100,Number(v)||0));localStorage.setItem('rl7_liquid_readability_v1',String(v));
+ document.documentElement.style.setProperty('--lg-blur',(3+v*.17).toFixed(1)+'px');
+ document.documentElement.style.setProperty('--lg-alpha',(.055+v*.00155).toFixed(3));
+ let o=document.getElementById('rl7-liquid-read-v');if(o)o.textContent=v;
+}
+async function choose(inp){
+ let f=inp.files&&inp.files[0];if(!f)return;if(f.size>12*1024*1024){Core.toast('壁纸请控制在 12 MB 以内');inp.value='';return}
+ try{await setWall(f);await restore();Core.toast('Liquid Glass 壁纸已保存')}catch(e){Core.toast('壁纸保存失败')}inp.value='';
+}
+async function clear(){try{await delWall()}catch(e){}await restore();Core.toast('Liquid Glass 壁纸已清除')}
+function controls(){
+ let c=document.getElementById('theme-selector-container')||document.querySelector('.theme-grid');
+ if(!c)return;
+ let host=c.parentElement||c;if(document.getElementById('rl7-liquid-controls'))return;
+ let d=document.createElement('div');d.id='rl7-liquid-controls';d.className='rl7-liquid-controls';
+ d.innerHTML='<h4>Liquid Glass</h4><div class="rl7-liquid-actions"><button id="rl7-liquid-pick">更换主页壁纸</button><button id="rl7-liquid-clear">清除壁纸</button></div><input id="rl7-liquid-file" type="file" accept="image/*" hidden><label class="rl7-liquid-read"><span>玻璃清晰度</span><input id="rl7-liquid-read" type="range" min="0" max="100"><b id="rl7-liquid-read-v"></b></label><div class="rl7-liquid-note">壁纸会保存在当前设备；Liquid Glass 使用固定壁纸层，不会因为页面高度变化而跳动。</div>';
+ host.appendChild(d);
+ let val=Number(localStorage.getItem('rl7_liquid_readability_v1')||50);d.querySelector('#rl7-liquid-read').value=val;readability(val);
+ d.querySelector('#rl7-liquid-pick').onclick=()=>d.querySelector('#rl7-liquid-file').click();
+ d.querySelector('#rl7-liquid-file').onchange=function(){choose(this)};
+ d.querySelector('#rl7-liquid-clear').onclick=clear;
+ d.querySelector('#rl7-liquid-read').oninput=function(){readability(this.value)};
+}
+function install(){
+ if(!window.ThemeManager||!window.Storage)return false;
+ if(!ThemeManager.themes.some(t=>t.id==='liquid'))ThemeManager.themes.push({id:'liquid',name:'Liquid Glass',color:'#DDE2E7'});
+ if(!ThemeManager.__liquid47){
+   ThemeManager.__liquid47=1;
+   let oldApply=ThemeManager.apply.bind(ThemeManager);
+   ThemeManager.apply=function(persist=true){let r=oldApply(persist);applyLiquid();return r};
+   let oldRender=ThemeManager.renderThemeSelector.bind(ThemeManager);
+   ThemeManager.renderThemeSelector=function(c){let r=oldRender(c);setTimeout(controls,0);return r};
+   let oldGet=ThemeManager.getCurrent.bind(ThemeManager);
+   ThemeManager.getCurrent=function(){if(this.currentTheme==='liquid')return {id:'liquid',name:'Liquid Glass',color:'#DDE2E7'};return oldGet()};
+ }
+ /* ThemeManager.init may have rejected liquid before this patch loaded. Recover saved choice. */
+ try{
+   let saved=Storage.get('theme','default');
+   if(saved==='liquid'&&ThemeManager.currentTheme!=='liquid'){ThemeManager.currentTheme='liquid';ThemeManager.apply(false)}
+ }catch(e){}
+ applyLiquid();controls();restore();return true;
+}
+function boot(){style();let n=0,t=setInterval(()=>{if(install()||++n>60)clearInterval(t)},200)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
