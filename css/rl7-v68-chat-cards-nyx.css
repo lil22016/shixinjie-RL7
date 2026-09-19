@@ -138,3 +138,132 @@ html.liquid-theme #page-chat-room .rl7-private-frequency-card,
   color:rgba(255,255,255,.72)!important;font-size:.88rem;line-height:1.35;
 }
 #page-chat-room .rl7-pf-arrow{color:rgba(255,255,255,.88)!important;font-size:1.15rem}
+
+
+/* ===== V71: chat feature cards — historical and new ===== */
+html.liquid-theme #page-chat-room .message-body.rl7-chat-feature-card,
+#page-chat-room .message-body.rl7-chat-feature-card{
+  background:rgba(12,14,18,.92)!important;
+  background-color:rgba(12,14,18,.92)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.16)!important;
+  border-radius:22px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.08)!important;
+  backdrop-filter:blur(22px) saturate(125%)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(125%)!important;
+}
+#page-chat-room .rl7-chat-feature-card-inner{
+  background:rgba(12,14,18,.92)!important;
+  background-color:rgba(12,14,18,.92)!important;
+  color:#fff!important;
+}
+#page-chat-room .message-body.rl7-chat-feature-card :is(h1,h2,h3,h4,strong,b,span,p,div,i){
+  text-shadow:0 1px 3px rgba(0,0,0,.52);
+}
+
+/* ===== V71: game-wide contrast sweep =====
+   pages-games.css used pale white translucent surfaces throughout all five games.
+   Make the structural surfaces dark glass, while preserving colorful playable tiles. */
+html.liquid-theme :is(
+ #page-game-sheep,#page-game-goose,#page-game-llk,#page-game-2048,#page-game-memory
+) :is(.game-topbar,.help-bubble,.game-overlay-panel){
+  background:rgba(18,20,25,.90)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.16)!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.24)!important;
+  backdrop-filter:blur(20px) saturate(120%)!important;
+  -webkit-backdrop-filter:blur(20px) saturate(120%)!important;
+}
+html.liquid-theme :is(
+ #page-game-sheep,#page-game-goose,#page-game-llk,#page-game-2048,#page-game-memory
+) .game-topbar-info{color:rgba(255,255,255,.82)!important}
+html.liquid-theme :is(
+ #page-game-sheep,#page-game-goose,#page-game-llk,#page-game-2048,#page-game-memory
+) .game-topbar-info .chip{
+  background:rgba(255,255,255,.11)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.17)!important;
+}
+html.liquid-theme :is(
+ #page-game-sheep,#page-game-goose,#page-game-llk,#page-game-2048,#page-game-memory
+) .game-icon-btn{
+  background:rgba(255,255,255,.12)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.18)!important;
+}
+html.liquid-theme :is(
+ #page-game-sheep,#page-game-goose,#page-game-llk,#page-game-2048,#page-game-memory
+) .help-bubble-text,
+html.liquid-theme :is(
+ #page-game-sheep,#page-game-goose,#page-game-llk,#page-game-2048,#page-game-memory
+) .help-bubble-text b{
+  color:#fff!important;
+}
+
+/* Board backgrounds: darker, so empty cells and wallpaper don't wash together. */
+html.liquid-theme :is(
+ #page-game-sheep .sheep-stage,
+ #page-game-goose .goose-board,
+ #page-game-llk .llk-board,
+ #page-game-2048 .g2048-board,
+ #page-game-memory .memory-board,
+ #page-game-sheep .sheep-slot,
+ #page-game-goose .shelf-zone,
+ #page-game-goose .shelf-tracks
+){
+  background:rgba(15,17,21,.72)!important;
+  border-color:rgba(255,255,255,.18)!important;
+  backdrop-filter:blur(14px)!important;
+  -webkit-backdrop-filter:blur(14px)!important;
+}
+
+/* 2048 specifically: empty cells + controls were almost white on wallpaper. */
+html.liquid-theme #page-game-2048 .g2048-cell{
+  background:rgba(255,255,255,.13)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.07)!important;
+}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-2{background:#8b7357!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-3{background:#9b7650!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-4{background:#a97842!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-5{background:#b97937!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-6{background:#c6782e!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-7{background:#cc6f27!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-8{background:#c95e24!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-9{background:#bd4d22!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-10{background:#aa3d20!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-cell.tile-11{background:#8f2f1d!important;color:#fff!important}
+html.liquid-theme #page-game-2048 .g2048-dpad-btn{
+  background:rgba(18,20,25,.88)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.18)!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.22)!important;
+}
+
+/* Other games: darken pale structural cells but keep emoji/content visible. */
+html.liquid-theme #page-game-sheep :is(.sheep-card,.sheep-slot-cell),
+html.liquid-theme #page-game-goose :is(.goose-cell,.shelf-cell,.shelf-track,.shelf-track-capacity),
+html.liquid-theme #page-game-llk .llk-cell,
+html.liquid-theme #page-game-memory :is(.memory-back,.memory-front){
+  background:rgba(38,41,48,.94)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.15)!important;
+}
+html.liquid-theme #page-game-sheep .sheep-card.covered::after{
+  background:rgba(0,0,0,.28)!important;
+}
+html.liquid-theme #page-game-memory .memory-card.matched .memory-front{
+  background:rgba(48,72,61,.96)!important;
+}
+html.liquid-theme .game-overlay{
+  background:rgba(0,0,0,.52)!important;
+}
+html.liquid-theme .game-overlay-panel h3,
+html.liquid-theme .game-overlay-panel .overlay-quote{
+  color:#fff!important;
+}
+html.liquid-theme .game-overlay-panel .overlay-quote{
+  background:rgba(255,255,255,.09)!important;
+}
