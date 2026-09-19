@@ -1,48 +1,95 @@
-/* RL7 v31 — chat wallpaper swatch + safe photo/solid switching */
+/* RL7 v50 — isolate chat wallpaper from global/PWA chrome + stabilize chat overlays */
 (function(){
 'use strict';
-var installed=false, PHOTO_ACTIVE='__idb__';
-function chatId(){var p=document.getElementById('page-chat-room');return p&&p.dataset?p.dataset.chatId:''}
-function toast(s){if(window.Core&&Core.toast)Core.toast(s)}
-function renderPhotoSwatch(){
- var panel=document.querySelector('#chat-bg-overlay .chat-bg-panel'),opts=panel&&panel.querySelector('.chat-bg-options'),id=chatId();
- if(!opts||!id||opts.querySelector('.rl7-photo-bg-swatch')||!window.ChatBgDB)return;
- ChatBgDB.get(id).then(function(img){
-  if(!img||String(img).indexOf('data:')!==0)return;
-  var sw=document.createElement('div');
-  sw.className='chat-bg-swatch rl7-photo-bg-swatch'+(Storage.getChatBgCustom(id)===PHOTO_ACTIVE?' selected':'');
-  sw.title='已上传的图片';sw.setAttribute('aria-label','已上传的图片');
-  sw.style.backgroundImage='url("'+String(img).replace(/"/g,'%22')+'")';
-  sw.onclick=function(e){e.stopPropagation();ChatBgDB.get(id).then(function(saved){
-   if(!saved){toast('没有找到已上传的图片背景');return}
-   Storage.setChatBgCustom(id,PHOTO_ACTIVE);applyChatBackground(saved);closeChatBgPicker();toast('已切回图片背景')
-  }).catch(function(){toast('没有找到已上传的图片背景')})};
-  opts.appendChild(sw)
- }).catch(function(){})
+var installed=false, inChat=false, saved=null;
+function el(id){return document.getElementById(id)}
+function snapStyle(node){if(!node)return null;return node.getAttribute('style')}
+function restoreStyle(node, v){if(!node)return;if(v===null||v===undefined)node.removeAttribute('style');else node.setAttribute('style',v)}
+function saveGlobal(){
+ if(saved)return;
+ saved={body:snapStyle(document.body),html:snapStyle(document.documentElement),bg:snapStyle(el('app-bg'))};
 }
-function install(){
- if(installed||typeof window.showChatBgPicker!=='function'||typeof window.applyChatBg!=='function'||typeof window.pickCustomChatBg!=='function')return;
- installed=true;
- var originalShow=window.showChatBgPicker, originalApply=window.applyChatBg;
- window.showChatBgPicker=function(){var r=originalShow.apply(this,arguments);setTimeout(renderPhotoSwatch,0);return r};
- window.applyChatBg=function(value){
-  var id=chatId();if(!id)return;
-  if(typeof value==='string'&&value.indexOf('data:')===0)return originalApply.apply(this,arguments);
-  /* IMPORTANT: do not ChatBgDB.del(id) when choosing a color. */
-  Storage.setChatBgCustom(id,value);applyChatBackground(value);closeChatBgPicker();
-  var n={'default':'跟随主题','#FFE4E1':'暖粉','#E3F2FD':'浅蓝','#E8F5E9':'淡绿','#FFF8E1':'奶油','#F3E5F5':'薰衣草','#1a1a2e':'深夜','#1b2a1b':'墨绿'};
-  toast('聊天背景已设为'+(n[value]||value))
- };
- window.pickCustomChatBg=function(){
-  var input=document.createElement('input');input.type='file';input.accept='image/*';input.style.position='fixed';input.style.left='-9999px';document.body.appendChild(input);
-  input.addEventListener('change',function(){
-   var file=input.files&&input.files[0];if(!file){input.remove();return}
-   var reader=new FileReader();
-   reader.onload=function(e){var raw=e.target.result,finish=function(data){originalApply.call(window,data);setTimeout(function(){input.remove()},0)};
-    if(typeof window.compressImageData==='function')compressImageData(raw,1600,0.9,false).then(finish).catch(function(){finish(raw)});else finish(raw)};
-   reader.onerror=function(){toast('图片读取失败，请重新选择');input.remove()};reader.readAsDataURL(file)
-  },{once:true});input.click()
+function chatPage(){return el('page-chat-room')}
+function mirrorChatBackdrop(){
+ if(!inChat)return;
+ var p=chatPage(); if(!p)return;
+ saveGlobal();
+ var cs=getComputedStyle(p), img=cs.backgroundImage, col=cs.backgroundColor;
+ var body=document.body, html=document.documentElement, bg=el('app-bg');
+ /* The iOS standalone status area is painted from the document/root background.
+    Mirror the CURRENT chat wallpaper there only while chat-room is active. */
+ [html,body].forEach(function(n){if(!n)return;
+   n.style.backgroundColor=(col&&col!=='rgba(0, 0, 0, 0)')?col:'var(--bg-main,#111)';
+   n.style.backgroundImage=(img&&img!=='none')?img:'none';
+   n.style.backgroundSize='cover'; n.style.backgroundPosition='center'; n.style.backgroundRepeat='no-repeat';
+ });
+ if(bg){
+   bg.style.backgroundColor=(col&&col!=='rgba(0, 0, 0, 0)')?col:'var(--bg-main,#111)';
+   bg.style.backgroundImage=(img&&img!=='none')?img:'none';
+   bg.style.backgroundSize='cover';bg.style.backgroundPosition='center';bg.style.backgroundRepeat='no-repeat';
  }
 }
-setTimeout(install,100);setInterval(install,1000)
+function enterChat(){
+ inChat=true; saveGlobal();
+ document.documentElement.classList.add('rl7-chat-active-v50');
+ /* Do not let a stale visualViewport measurement expose the underlying bottom nav. */
+ document.documentElement.style.setProperty('--chat-offset','0px');
+ if(!(window.visualViewport && (window.innerHeight-window.visualViewport.height)>=120)){
+   document.documentElement.style.setProperty('--chat-h','100dvh');
+   document.documentElement.style.setProperty('--kbd','0px');
+ }
+ requestAnimationFrame(mirrorChatBackdrop);setTimeout(mirrorChatBackdrop,40);setTimeout(mirrorChatBackdrop,250);
+}
+function leaveChat(){
+ if(!inChat)return; inChat=false;
+ document.documentElement.classList.remove('rl7-chat-active-v50');
+ if(saved){restoreStyle(document.body,saved.body);restoreStyle(document.documentElement,saved.html);restoreStyle(el('app-bg'),saved.bg);saved=null;}
+}
+function install(){
+ if(installed||!window.Navigation||typeof Navigation._navigateTo!=='function')return;
+ installed=true;
+ var nav=Navigation._navigateTo;
+ Navigation._navigateTo=function(page){
+   var was=inChat;
+   if(page==='chat-room') enterChat(); else if(was) leaveChat();
+   var r=nav.apply(this,arguments);
+   if(page==='chat-room'){requestAnimationFrame(mirrorChatBackdrop);setTimeout(mirrorChatBackdrop,80);}
+   return r;
+ };
+ /* Wallpaper can arrive asynchronously from IndexedDB after navigation. Mirror every real apply. */
+ if(typeof window.applyChatBackground==='function'){
+   var apply=window.applyChatBackground;
+   window.applyChatBackground=function(){var r=apply.apply(this,arguments);if(inChat){requestAnimationFrame(mirrorChatBackdrop);setTimeout(mirrorChatBackdrop,60);}return r;};
+ }
+ /* If app booted/restored directly with chat active. */
+ var p=chatPage();if(p&&p.classList.contains('active'))enterChat();
+}
+var css=document.createElement('style');css.id='rl7-chat-wallpaper-isolation-v50-css';css.textContent=`
+/* Chat must cover the app shell; global bottom navigation must never leak through. */
+html.rl7-chat-active-v50 .bottom-nav{visibility:hidden!important;pointer-events:none!important;}
+html.rl7-chat-active-v50 #page-chat-room.page-fullscreen.active{
+  display:flex!important;position:fixed!important;left:0!important;right:0!important;
+  top:var(--chat-offset,0px)!important;width:100vw!important;
+  height:var(--chat-h,100dvh)!important;min-height:0!important;max-height:none!important;
+  margin:0!important;padding:0!important;z-index:10000!important;overflow:hidden!important;
+}
+/* The three-dot menu was inheriting dark-wallpaper foreground variables while its glass surface could resolve white,
+   producing the white-on-white giant panel seen in the screenshot. Give the menu its own coherent surface. */
+html.rl7-chat-active-v50 #page-chat-room.chat-room-bg-dark .chat-menu-panel,
+html.rl7-chat-active-v50 #page-chat-room .chat-room-bg-dark .chat-menu-panel,
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-panel{
+  background:rgba(22,24,27,.92)!important;color:#fff!important;
+  -webkit-backdrop-filter:blur(24px) saturate(130%)!important;backdrop-filter:blur(24px) saturate(130%)!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+}
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-item,
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-item span,
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-item i{color:rgba(255,255,255,.94)!important;}
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-item+.chat-menu-item{border-top-color:rgba(255,255,255,.10)!important;}
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-item .menu-toggle{background:rgba(255,255,255,.18)!important;}
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-item .menu-toggle.on{background:var(--primary,#d88aa8)!important;}
+html.rl7-chat-active-v50 #page-chat-room .chat-menu-item .menu-toggle::after{background:#fff!important;}
+`;
+document.head.appendChild(css);
+setTimeout(install,0);setTimeout(install,300);setInterval(function(){if(!installed)install()},1200);
 })();
