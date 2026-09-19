@@ -11,63 +11,7 @@ const App = {
     this.initSplash();
     Navigation.init();
     JournalCard.render();
-    // 移动端软键盘适配：全屏聊天页高度改由 --chat-h（= visualViewport.height 可视区高度）单值驱动。
-    // 相比旧的"innerHeight - visualViewport.height 差值"方案，消除了键盘弹出过程中
-    // innerHeight 与 vv.height 在 rAF 合并窗口内更新不同步导致的 --kbd 瞬时错值 / 页面高度抖动
-    // （即"时好时坏 / 卡死不动"的根源）。两种引擎下 --chat-h 均单调、稳定地跟随可视区：
-    //  - resizes-content：布局视口随键盘自动收缩，innerHeight == vv.height == 可视高，页面高度 = vv.height 正确
-    //  - resizes-visual ：布局视口不收缩，vv.height 仍精确反映扣掉键盘后的可视区，页面高度 = vv.height 正确
-    // --kbd 保留为向后兼容：仅在高阈值确认为软键盘时写入差值（地址栏收起的小幅变化一律归零，避免误压扁），
-    // 供旧布局 calc(100% - var(--kbd)) 回退使用，并继续承担"键盘弹出时根滚动归零"的职责。
-    if (window.visualViewport) {
-      var _kbdRaf = 0;
-      function _syncKbd() {
-        if (_kbdRaf) return;
-        _kbdRaf = requestAnimationFrame(function () {
-          _kbdRaf = 0;
-          var vv = window.visualViewport;
-          var ih = window.innerHeight || document.documentElement.clientHeight;
-          var vvH = vv ? vv.height : 0;
-          // 单值驱动：页面可视高度 = visualViewport 高度。桌面无键盘时 vv.height == 布局视口高，保持全高无回归。
-          if (vvH > 0) {
-            document.documentElement.style.setProperty('--chat-h', Math.round(vvH) + 'px');
-          }
-          // 向后兼容 --kbd：仅在确认为软键盘（差值达阈值且比例达标，或 vv.type 明确 virtual-keyboard）时写入，
-          // 竞态中间态（diff 未达阈值）写 0——此时页面高度由 --chat-h 精确控制，不影响最终布局。
-          var kbd = 0;
-          if (ih && vvH && vvH < ih) {
-            var diff = ih - vvH;
-            var kind = (vv && vv.type) || '';
-            // visualViewport.type === 'virtual-keyboard' 为规范可选信号（新版 Chromium），仅作加分确认
-            if (kind === 'virtual-keyboard' || (diff >= 120 && diff / ih >= 0.15)) {
-              kbd = Math.round(diff);
-            }
-          }
-          document.documentElement.style.setProperty('--kbd', kbd + 'px');
-          // 修复6：iOS Safari 软键盘弹起时 UA 常主动滚动/平移可视视口以保证输入框可见
-          // （即使根元素 overflow:hidden 也无法拦截），而 position:fixed 的聊天页相对布局视口
-          // 定位不随可视区移动，造成"聊天页整体上移、露出下层首页"的分层错位。
-          // 用 visualViewport.offsetTop 反向补偿：仅确认软键盘弹出时把聊天页顶部拉回可视区顶部。
-          // 无键盘/桌面端 kbd=0 时 offsetTop 一律归零，不影响既有布局。
-          var offTop = 0;
-          if (kbd > 0) {
-            try { if (vv && vv.offsetTop > 0) offTop = Math.round(vv.offsetTop); } catch (e) {}
-          }
-          document.documentElement.style.setProperty('--chat-offset', offTop + 'px');
-          // 修复4：--chat-panel-h 单一来源（收敛原 chat-panels.js 第二套独立键盘测量）。
-          // 无键盘回退 300px；有键盘时面板高=键盘高，与 --chat-h 同帧由同一 rAF 驱动，消除闪动。
-          var panelH = kbd > 0 ? kbd : 300;
-          document.documentElement.style.setProperty('--chat-panel-h', panelH + 'px');
-          if (kbd > 0 && window.scrollY > 0) {
-            window.scrollTo(0, 0);
-          }
-        });
-      }
-      window.visualViewport.addEventListener('resize', _syncKbd);
-      window.visualViewport.addEventListener('scroll', _syncKbd);
-      window.addEventListener('resize', _syncKbd);
-      _syncKbd();
-    }
+
     // 全站来电：应用启动即启动"允许对方主动拨打"定时器（不限于聊天界面）
     startSimulateCallTimer();
     // 全站主动发送：应用启动即启动（不限于聊天界面），保证到点必发
