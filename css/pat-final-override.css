@@ -1,0 +1,60 @@
+/* PAT FINAL OVERRIDE
+   Loaded last on purpose. Targets the actual #pat-overlay DOM and every known panel/card/input descendant.
+*/
+html.liquid-theme #pat-overlay,
+#pat-overlay {
+  color: #fff !important;
+}
+
+html.liquid-theme #pat-overlay .black-panel,
+html.liquid-theme #pat-overlay .pat-panel,
+#pat-overlay .black-panel,
+#pat-overlay .pat-panel {
+  background: rgba(23,25,30,.88) !important;
+  background-color: rgba(23,25,30,.88) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(145%) !important;
+  backdrop-filter: blur(24px) saturate(145%) !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,.28) !important;
+}
+
+html.liquid-theme #pat-overlay .pat-preset-card,
+#pat-overlay .pat-preset-card {
+  background: rgba(255,255,255,.10) !important;
+  background-color: rgba(255,255,255,.10) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.15) !important;
+}
+
+html.liquid-theme #pat-overlay .black-input,
+html.liquid-theme #pat-overlay input,
+html.liquid-theme #pat-overlay textarea,
+html.liquid-theme #pat-overlay select,
+#pat-overlay .black-input,
+#pat-overlay input,
+#pat-overlay textarea,
+#pat-overlay select {
+  background: rgba(255,255,255,.10) !important;
+  background-color: rgba(255,255,255,.10) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  border-color: rgba(255,255,255,.16) !important;
+}
+
+#pat-overlay input::placeholder,
+#pat-overlay textarea::placeholder {
+  color: rgba(255,255,255,.55) !important;
+  -webkit-text-fill-color: rgba(255,255,255,.55) !important;
+}
+
+#pat-overlay .pat-preset-b,
+#pat-overlay .black-label,
+#pat-overlay .black-field label {
+  color: rgba(255,255,255,.72) !important;
+}
+
+#pat-overlay .black-title,
+#pat-overlay .pat-preset-a {
+  color: #fff !important;
+}
