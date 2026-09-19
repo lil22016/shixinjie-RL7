@@ -282,22 +282,7 @@ function add(){
  var s=document.createElement('style');s.id='rl7-liquid-v48-style';s.textContent=`
 /* 1. iOS/Bluefy safe area: extend wallpaper/theme behind the status bar.
    Body remains transparent in Liquid mode so the fixed wallpaper is visible. */
-html.liquid-theme,html.liquid-theme body{
- min-height:100%;background-color:#202126!important;
-}
-html.liquid-theme body{background:transparent!important}
-html.liquid-theme #rl7-liquid-wallpaper{
- top:calc(-1 * env(safe-area-inset-top,0px))!important;
- left:0!important;right:0!important;
- width:100vw!important;
- height:calc(100dvh + env(safe-area-inset-top,0px) + env(safe-area-inset-bottom,0px))!important;
- background-color:#202126!important;
-}
-html.liquid-theme #app-bg{
- top:calc(-1 * env(safe-area-inset-top,0px))!important;
- min-height:calc(100dvh + env(safe-area-inset-top,0px))!important;
-}
-html.liquid-theme #app.phone-frame{min-height:100dvh!important}
+
 
 /* 2. Settings / global icon customization: dark neutral glass, never white-on-white. */
 html.liquid-theme .icon-zone-box{
