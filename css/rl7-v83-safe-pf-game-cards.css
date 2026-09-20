@@ -1,0 +1,112 @@
+/* RL7 V83 — renderer-only card styling. */
+
+/* ---------- Private Frequency ---------- */
+html.liquid-theme #page-chat-room .rl7-private-frequency-card.rl7-pf-card-v83 {
+  width: min(520px, calc(100vw - 92px)) !important;
+  max-width: min(520px, calc(100vw - 92px)) !important;
+  min-width: min(300px, calc(100vw - 92px)) !important;
+  min-height: 92px !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: 56px minmax(0,1fr) 24px !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 16px 17px !important;
+  border-radius: 22px !important;
+  background: rgba(20,20,20,var(--lg-alpha)) !important;
+  border: 1px solid var(--lg-border) !important;
+  box-shadow: inset 0 1px 0 var(--lg-highlight), 0 12px 34px var(--lg-shadow) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  color: #fff !important;
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+/* Same Font Awesome element + home-feature-icon base class as the actual
+   Private Frequency tile on the site's home screen. */
+#page-chat-room .rl7-pf-home-icon-v83 {
+  width: 56px !important;
+  height: 56px !important;
+  margin: 0 !important;
+  flex: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#page-chat-room .rl7-pf-home-icon-v83 i {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#page-chat-room .rl7-pf-card-v83 .rl7-pf-copy {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+#page-chat-room .rl7-pf-card-v83 .rl7-pf-copy strong {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  font-size: 16px !important;
+}
+#page-chat-room .rl7-pf-card-v83 .rl7-pf-copy > span {
+  color: rgba(255,255,255,.78) !important;
+  -webkit-text-fill-color: rgba(255,255,255,.78) !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+#page-chat-room .rl7-pf-card-v83 .rl7-pf-arrow {
+  color: #fff !important;
+  font-size: 20px !important;
+}
+
+/* ---------- Game invite ---------- */
+/* V75 used message-body as the glass shell, which necessarily swallowed the
+   timestamp. Neutralize that shell only on rows V83 identifies at render time. */
+html.liquid-theme #page-chat-room .rl7-game-row-v83 > .message-body,
+html.liquid-theme #page-chat-room .rl7-game-row-v83 > .message-body.rl7-game-invite-shell {
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  overflow: visible !important;
+}
+
+/* The card itself owns the glass and border. Specificity intentionally beats
+   V75's border:0 rule for .message-bubble. */
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v83 .message-body .message-bubble.rl7-game-card-v83 {
+  width: min(520px, calc(100vw - 92px)) !important;
+  max-width: min(520px, calc(100vw - 92px)) !important;
+  box-sizing: border-box !important;
+  padding: 14px 16px !important;
+  border-radius: 22px !important;
+  background: rgba(20,20,20,var(--lg-alpha)) !important;
+  border: 1px solid var(--lg-border) !important;
+  box-shadow: inset 0 1px 0 var(--lg-highlight), 0 12px 34px var(--lg-shadow) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: currentColor !important;
+  overflow: hidden !important;
+}
+
+/* Timestamp stays outside the card and is never clipped. */
+#page-chat-room .rl7-game-row-v83 .message-meta,
+#page-chat-room .rl7-pf-card-v83 ~ .message-meta {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin-top: 6px !important;
+  padding: 0 2px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
