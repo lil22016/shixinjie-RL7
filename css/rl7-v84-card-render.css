@@ -1,0 +1,69 @@
+/* RL7 V84 — loaded LAST. */
+
+/* PF: force the actual card to the intended full card width. */
+html.liquid-theme body #page-chat-room .message-row.rl7-pf-row-v84 .rl7-private-frequency-card.rl7-pf-card-v84{
+ width:min(520px,calc(100vw - 92px))!important;
+ max-width:min(520px,calc(100vw - 92px))!important;
+ min-width:min(300px,calc(100vw - 92px))!important;
+ min-height:90px!important;
+ box-sizing:border-box!important;
+ display:grid!important;
+ grid-template-columns:56px minmax(0,1fr) 24px!important;
+ align-items:center!important;gap:14px!important;
+ padding:16px 17px!important;border-radius:22px!important;
+ background:rgba(20,20,20,var(--lg-alpha))!important;
+ border:1px solid var(--lg-border)!important;
+ box-shadow:inset 0 1px 0 var(--lg-highlight),0 12px 34px var(--lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important;text-align:left!important;overflow:hidden!important
+}
+html.liquid-theme body #page-chat-room .rl7-pf-card-v84 .home-feature-icon.rl7-pf-home-icon-v84{
+ width:56px!important;height:56px!important;min-width:56px!important;
+ margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;
+ border-radius:15px!important;
+ background:rgba(var(--primary-rgb),.20)!important;
+ border:1px solid rgba(var(--primary-rgb),.20)!important;
+ box-shadow:0 2px 6px rgba(var(--primary-rgb),.18)!important;
+ font-size:27px!important;color:var(--primary)!important
+}
+html.liquid-theme body #page-chat-room .rl7-pf-home-icon-v84 i.fas.fa-wave-square{
+ display:inline-block!important;opacity:1!important;visibility:visible!important;
+ font-family:"Font Awesome 6 Free","Font Awesome 5 Free"!important;
+ font-weight:900!important;font-size:27px!important;color:inherit!important;-webkit-text-fill-color:currentColor!important
+}
+#page-chat-room .rl7-pf-card-v84 .rl7-pf-copy{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important}
+#page-chat-room .rl7-pf-card-v84 .rl7-pf-copy strong{font-size:16px!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+#page-chat-room .rl7-pf-card-v84 .rl7-pf-copy>span{font-size:14px!important;line-height:1.35!important;color:rgba(255,255,255,.78)!important;-webkit-text-fill-color:rgba(255,255,255,.78)!important}
+
+/* GAME: V75 may still tag message-body as a shell. V84 explicitly makes that
+   outer body transparent, so timestamp can never be inside the visible card. */
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v84>.message-body,
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v84>.message-body.rl7-game-invite-shell{
+ width:auto!important;max-width:none!important;padding:0!important;
+ border:0!important;border-radius:0!important;outline:0!important;
+ background:transparent!important;background-color:transparent!important;
+ box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+ overflow:visible!important
+}
+/* Actual game bubble = the only visible glass rectangle. */
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v84>.message-body>.message-bubble.rl7-game-card-v84{
+ width:min(520px,calc(100vw - 92px))!important;
+ max-width:min(520px,calc(100vw - 92px))!important;
+ box-sizing:border-box!important;padding:14px 16px!important;
+ border-radius:22px!important;
+ background:rgba(20,20,20,var(--lg-alpha))!important;
+ border:1px solid var(--lg-border)!important;
+ outline:0!important;
+ box-shadow:inset 0 1px 0 var(--lg-highlight),0 12px 34px var(--lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important;-webkit-text-fill-color:currentColor!important;overflow:hidden!important
+}
+/* Timestamp is a normal sibling below the bubble. */
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v84>.message-body>.message-meta,
+html.liquid-theme body #page-chat-room .message-row.rl7-pf-row-v84>.message-body>.message-meta{
+ position:static!important;display:flex!important;width:auto!important;height:auto!important;min-height:0!important;
+ margin-top:6px!important;padding:0 2px!important;background:transparent!important;border:0!important;
+ box-shadow:none!important;overflow:visible!important
+}
