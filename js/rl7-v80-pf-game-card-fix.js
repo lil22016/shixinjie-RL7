@@ -1,20 +1,35 @@
-/* RL7 V80B — PF uses the exact home-screen icon DOM; rich-card timestamps stay outside. */
-(function(){'use strict';if(window.__RL7_V80B_PF_CARD__)return;window.__RL7_V80B_PF_CARD__=1;
-function esc(s){try{return Core&&Core.escapeHtml?Core.escapeHtml(String(s)):String(s)}catch(e){return String(s)}}
-function homePFIconHTML(){
- var el=document.querySelector('.home-feature-item[onclick*="openPrivateFrequency"] .home-feature-icon');
- if(el)return '<span class="rl7-pf-home-icon">'+el.innerHTML+'</span>';
- return '<span class="rl7-pf-home-icon"><i class="fas fa-wave-square"></i></span>';
+/* RL7 V80C — direct DOM repair, independent of renderer wrapper order. */
+(function(){'use strict';
+function homeIcon(){
+ var src=document.querySelector('.home-feature-item[onclick*="openPrivateFrequency"] .home-feature-icon');
+ if(!src)return null;
+ var clone=src.cloneNode(true); clone.removeAttribute('class'); clone.className='rl7-pf-home-icon-exact';
+ return clone;
 }
-function install(){if(typeof window._buildNormalMessageHtml!=='function')return false;if(window._buildNormalMessageHtml.__rl7v80bpf)return true;var old=window._buildNormalMessageHtml;
- function wrapped(msg,isSelf,selfAvatarHtml,otherAvatarHtml,suffixHtml,senderName,senderStatusHtml,rowGroupCls){
-  if(msg&&msg.msgType==='private_frequency'){
-   var line=(msg.privateFrequency&&msg.privateFrequency.line)||msg.text||'A private channel. Just you and me.';
-   var senderHtml=senderName?'<div class="message-sender-name">'+esc(senderName)+(senderStatusHtml||'')+'</div>':'';
-   return '<div class="message-row '+(isSelf?'self':'other'+(rowGroupCls||''))+' rl7-pf-row" data-msg-id="'+msg.id+'">'+(isSelf?selfAvatarHtml:otherAvatarHtml)+'<div class="message-body">'+senderHtml+'<button type="button" class="rl7-private-frequency-card rl7-pf-game-card" onclick="RL7OpenPrivateFrequencyInvite()">'+homePFIconHTML()+'<span class="rl7-pf-copy"><strong>Private Frequency</strong><span>'+esc(line)+'</span></span><i class="fas fa-chevron-right rl7-pf-arrow"></i></button>'+(suffixHtml||'')+'<div class="message-meta"><div class="message-time">'+(window.Core&&Core.formatTime?Core.formatTime(msg.time):'')+'</div></div></div></div>';
-  } return old.apply(this,arguments);
- } wrapped.__rl7v80bpf=1;window._buildNormalMessageHtml=wrapped;return true}
-function norm(row){if(!row||!row.classList.contains('rl7-game-invite-row'))return;var body=row.querySelector(':scope > .message-body')||row.querySelector('.message-body');if(!body)return;body.classList.remove('rl7-game-invite-shell');var card=body.querySelector('.rl7-game-invite-card,.message-bubble,[class*="game"][class*="card"],[class*="invite"][class*="card"]');if(card)card.classList.add('rl7-game-card-v80')}
-function scan(r){var s=r&&r.querySelectorAll?r:document;if(s.matches&&s.matches('.rl7-game-invite-row'))norm(s);s.querySelectorAll&&s.querySelectorAll('.rl7-game-invite-row').forEach(norm)}
-function boot(){install();scan(document);var n=0,t=setInterval(function(){install();scan(document);if(++n>40)clearInterval(t)},250);new MutationObserver(function(ms){ms.forEach(function(m){(m.addedNodes||[]).forEach(function(n){if(n.nodeType===1)scan(n)})})}).observe(document.body,{childList:true,subtree:true})}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();})();
+function fixPF(row){
+ if(!row||!row.querySelector)return;
+ var card=row.querySelector('.rl7-private-frequency-card'); if(!card)return;
+ row.classList.add('rl7-pf-row');
+ var old=card.querySelector('.rl7-pf-icon,.rl7-pf-home-icon,.rl7-pf-home-icon-exact');
+ var icon=homeIcon();
+ if(icon){ if(old)old.replaceWith(icon); else card.insertBefore(icon,card.firstChild); }
+ card.classList.add('rl7-pf-game-card');
+}
+function fixGame(row){
+ if(!row||!row.querySelector)return;
+ var body=row.querySelector(':scope > .message-body')||row.querySelector('.message-body'); if(!body)return;
+ var text=(body.innerText||body.textContent||'').replace(/\s+/g,' ').trim();
+ if(!(/\b2048\b|羊了个羊|连连看|消消乐|抓大鹅|记忆翻牌|memory|play with me|beat me|game invite|游戏邀请|挑战/i.test(text)))return;
+ row.classList.add('rl7-game-invite-row','rl7-game-v80c');
+ body.classList.remove('rl7-game-invite-shell','rl7-feature-card-shell');
+ var card=body.querySelector('.message-bubble,.rl7-game-invite-card,[class*="game"][class*="card"],[class*="invite"][class*="card"]');
+ if(card)card.classList.add('rl7-game-card-v80c');
+}
+function scan(root){
+ var s=root&&root.querySelectorAll?root:document;
+ if(s.matches&&s.matches('#page-chat-room .message-row')){fixPF(s);fixGame(s)}
+ if(s.querySelectorAll)s.querySelectorAll('#page-chat-room .message-row').forEach(function(r){fixPF(r);fixGame(r)});
+}
+function boot(){scan(document);new MutationObserver(function(ms){ms.forEach(function(m){if(m.target&&m.target.closest){var r=m.target.closest('#page-chat-room .message-row');if(r){fixPF(r);fixGame(r)}}(m.addedNodes||[]).forEach(function(n){if(n.nodeType===1)scan(n)})})}).observe(document.body,{childList:true,subtree:true,characterData:true});setInterval(function(){scan(document)},1200)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
