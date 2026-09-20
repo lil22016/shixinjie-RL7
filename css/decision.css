@@ -1279,3 +1279,79 @@ textarea.black-input { resize: none; line-height: 1.45; min-height: 58px; }
     padding: 12px;
   }
 }
+/* ============================================================
+   Liquid Glass — 帮我抉择（source-level authoritative rules）
+   ============================================================ */
+html.liquid-theme #decision-overlay .decision-panel,
+html.liquid-theme #page-chat-room .decision-card {
+  background: rgba(20,20,20,var(--lg-alpha,.13)) !important;
+  border: 1px solid var(--lg-border,rgba(255,255,255,.42)) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur,11.5px)) saturate(100%) !important;
+  backdrop-filter: blur(var(--lg-blur,11.5px)) saturate(100%) !important;
+  box-shadow: inset 0 1px 0 var(--lg-highlight,rgba(255,255,255,.22)),
+              0 12px 34px var(--lg-shadow,rgba(0,0,0,.20)) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+html.liquid-theme #decision-overlay :is(
+ .decision-title,.decision-title i,.decision-field>label,.decision-option-count,
+ .decision-add-option,.decision-target-chip,.decision-target-chip i,
+ .decision-btn,.decision-btn-cancel,.decision-btn-send
+),
+html.liquid-theme #page-chat-room .decision-card :is(
+ .decision-card-head,.decision-card-head i,.decision-card-question,
+ .decision-opt-item,.opt-tag,.opt-text,.opt-votes,
+ .decision-card-status,.decision-card-status i
+) {
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  text-shadow:var(--lg-text-shadow,0 2px 5px rgba(0,0,0,.72)) !important;
+}
+html.liquid-theme #decision-overlay :is(
+ .decision-input,.decision-target-chip,.decision-add-option,.decision-btn-cancel
+) {
+  background:rgba(255,255,255,.09) !important;
+  border-color:rgba(255,255,255,.28) !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+}
+html.liquid-theme #decision-overlay .decision-input::placeholder {
+  color:rgba(255,255,255,.68) !important;
+  -webkit-text-fill-color:rgba(255,255,255,.68) !important;
+  opacity:1 !important;
+  text-shadow:var(--lg-text-shadow,0 2px 5px rgba(0,0,0,.72)) !important;
+}
+html.liquid-theme #decision-overlay .decision-target-chip.active {
+  background:rgba(255,255,255,.18) !important;
+  border-color:rgba(255,255,255,.48) !important;
+}
+html.liquid-theme #decision-overlay .decision-btn-send {
+  background:rgba(255,255,255,.18) !important;
+  border:1px solid rgba(255,255,255,.38) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 14px rgba(0,0,0,.14) !important;
+}
+html.liquid-theme #page-chat-room .decision-card .decision-opt-item {
+  background:rgba(255,255,255,.08) !important;
+  border:1px solid rgba(255,255,255,.24) !important;
+}
+html.liquid-theme #page-chat-room .decision-card .decision-opt-item .opt-tag {
+  background:rgba(255,255,255,.14) !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+}
+html.liquid-theme #page-chat-room .decision-card .decision-opt-item.picked {
+  background:rgba(255,255,255,.22) !important;
+  border:1px solid rgba(255,255,255,.58) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 1px rgba(0,0,0,.10) !important;
+}
+html.liquid-theme #page-chat-room .decision-card .decision-opt-item.picked .opt-tag {
+  background:rgba(255,255,255,.28) !important;
+  border-color:rgba(255,255,255,.52) !important;
+}
+html.liquid-theme #page-chat-room .decision-card .decision-card-status {
+  color:rgba(255,255,255,.88) !important;
+  -webkit-text-fill-color:rgba(255,255,255,.88) !important;
+}
+html.liquid-theme #page-chat-room .decision-card .pulse-dot {
+  background:#fff !important;
+  box-shadow:0 0 5px rgba(0,0,0,.55) !important;
+}
