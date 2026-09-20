@@ -1,0 +1,34 @@
+/* RL7 V79 — Bubble Shop follows the native Liquid Glass variables */
+html.liquid-theme #page-bubble-shop :is(.bs-section,.bs-card,.bs-css-import,.bs-rename-panel),
+html.liquid-theme :is(.bs-section,.bs-card,.bs-css-import,.bs-rename-panel){
+  background:var(--rl7-lg-surface,rgba(20,20,20,var(--lg-alpha)))!important;
+  border:1px solid var(--rl7-lg-border,var(--lg-border))!important;
+  box-shadow:var(--rl7-lg-shadow,inset 0 1px 0 var(--lg-highlight),0 12px 34px var(--lg-shadow))!important;
+  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+  backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+  color:#fff!important;
+}
+html.liquid-theme :is(.bs-section-title,.bs-card-name,.bs-empty,.bs-css-import,.bs-css-import label,.bs-rename-panel,.bs-rename-panel label){
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  text-shadow:var(--lg-text-shadow,0 2px 5px rgba(0,0,0,.72))!important;
+}
+html.liquid-theme :is(.bs-card-btn,.bs-css-save,.bs-assign-btn){
+  background:rgba(255,255,255,.10)!important;
+  border:1px solid rgba(255,255,255,.24)!important;
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  text-shadow:var(--lg-text-shadow,0 2px 5px rgba(0,0,0,.72))!important;
+}
+html.liquid-theme .bs-card-btn.danger{background:rgba(220,80,95,.14)!important;color:#ffd9df!important;-webkit-text-fill-color:#ffd9df!important}
+html.liquid-theme .bs-card-preview{
+  background:rgba(255,255,255,.06)!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+}
+html.liquid-theme #bs-css-code,
+html.liquid-theme .bs-rename-panel input{
+  background:rgba(255,255,255,.09)!important;
+  border:1px solid rgba(255,255,255,.28)!important;
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  caret-color:#fff!important;
+}
+/* old assignment dialog is no longer part of the interaction */
+#bs-assign-overlay{display:none!important}
