@@ -1,0 +1,45 @@
+/* RL7 V85 — source-safe PF + game presentation */
+
+/* PF is independent of Font Awesome: embedded SVG copied into the card renderer. */
+html.liquid-theme #page-chat-room .rl7-pf-row .rl7-private-frequency-card{
+ width:min(520px,calc(100vw - 92px))!important;max-width:min(520px,calc(100vw - 92px))!important;
+ min-width:min(300px,calc(100vw - 92px))!important;min-height:90px!important;box-sizing:border-box!important;
+ display:grid!important;grid-template-columns:56px minmax(0,1fr) 24px!important;align-items:center!important;gap:14px!important;
+ padding:16px 17px!important;border-radius:22px!important;background:var(--rl7-lg-surface)!important;
+ border:1px solid var(--rl7-lg-border)!important;box-shadow:var(--rl7-lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important;text-align:left!important;overflow:hidden!important
+}
+#page-chat-room .rl7-pf-svg-icon{width:56px!important;height:56px!important;border-radius:15px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:rgba(var(--primary-rgb),.20)!important;border:1px solid rgba(var(--primary-rgb),.20)!important;box-shadow:0 2px 6px rgba(var(--primary-rgb),.18)!important;color:var(--primary)!important}
+#page-chat-room .rl7-pf-svg-icon svg{display:block!important;width:29px!important;height:29px!important;overflow:visible!important}
+#page-chat-room .rl7-pf-svg-icon path{fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+#page-chat-room .rl7-pf-copy{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important}
+#page-chat-room .rl7-pf-copy strong{font-size:16px!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+#page-chat-room .rl7-pf-copy>span{font-size:14px!important;line-height:1.35!important;color:rgba(255,255,255,.78)!important;-webkit-text-fill-color:rgba(255,255,255,.78)!important}
+#page-chat-room .rl7-pf-arrow{font-size:25px!important;color:#fff!important}
+
+/* Critical difference: neutralize EVERY legacy shell class V73/V75 can leave on message-body. */
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v85>.message-body,
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v85>.message-body.rl7-game-invite-shell,
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v85>.message-body.rl7-feature-card-shell{
+ width:auto!important;max-width:calc(100% - 76px)!important;padding:0!important;border:0!important;border-radius:0!important;
+ background:transparent!important;background-color:transparent!important;box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important;text-shadow:none!important
+}
+/* V75 has a rule that makes all bubbles inside rl7-game-invite-row transparent/borderless.
+   This selector is deliberately more specific and loaded last. */
+html.liquid-theme body #page-chat-room .message-row.rl7-game-invite-row.rl7-game-row-v85>.message-body>.message-bubble.rl7-game-card-v85,
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v85>.message-body>.message-bubble.rl7-game-card-v85{
+ width:min(520px,calc(100vw - 92px))!important;max-width:100%!important;box-sizing:border-box!important;
+ padding:14px 16px!important;margin:2px 0 4px!important;border-radius:22px!important;
+ background:var(--rl7-lg-surface)!important;background-color:var(--rl7-lg-surface)!important;
+ border:1px solid var(--rl7-lg-border)!important;box-shadow:var(--rl7-lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important;-webkit-text-fill-color:currentColor!important;overflow:hidden!important
+}
+html.liquid-theme body #page-chat-room .message-row.rl7-game-row-v85>.message-body>.message-meta,
+html.liquid-theme body #page-chat-room .message-row.rl7-pf-row>.message-body>.message-meta{
+ position:static!important;display:flex!important;width:auto!important;height:auto!important;min-height:0!important;
+ margin-top:2px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important
+}
