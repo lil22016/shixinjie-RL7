@@ -1,0 +1,65 @@
+/* RL7 V90 — small visual fixes: pat shadow, Moments publish readability, home top safe-area */
+
+/* 拍一拍：保留现有粉色气泡与文字颜色，只把发白的文字光晕改成柔和深灰阴影。 */
+#page-chat-room .message-pat {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .42) !important;
+}
+#page-chat-room .message-pat .pat-icon {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .32) !important;
+}
+
+/* 朋友圈：发布入口 sheet / panel 使用现有 Liquid Glass 变量，不再白底白字。 */
+html.liquid-theme :is(.moments-sheet,.moments-panel,.moments-overlay-panel) {
+  background: rgba(20,20,20,var(--lg-alpha)) !important;
+  border: 1px solid var(--lg-border) !important;
+  box-shadow: inset 0 1px 0 var(--lg-highlight), 0 12px 34px var(--lg-shadow) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  color: #fff !important;
+}
+html.liquid-theme :is(.moments-panel-title,.moments-option,.moments-option i) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+html.liquid-theme .moments-option {
+  background: rgba(255,255,255,.09) !important;
+  border-color: rgba(255,255,255,.16) !important;
+}
+
+/* 朋友圈发布页：正文输入区和选择区改为可读的 Liquid Glass。 */
+html.liquid-theme #page-moments-publish,
+html.liquid-theme #page-moments-publish .moments-publish-page {
+  color: #fff !important;
+}
+html.liquid-theme #page-moments-publish :is(.moments-publish-input,.moments-pub-add,.moments-pub-action-btn,.moments-pub-quote) {
+  background: rgba(20,20,20,var(--lg-alpha)) !important;
+  border: 1px solid var(--lg-border) !important;
+  box-shadow: inset 0 1px 0 var(--lg-highlight), 0 8px 24px var(--lg-shadow) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  backdrop-filter: blur(var(--lg-blur)) saturate(100%) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+html.liquid-theme #page-moments-publish .moments-publish-input::placeholder {
+  color: rgba(255,255,255,.58) !important;
+  -webkit-text-fill-color: rgba(255,255,255,.58) !important;
+}
+html.liquid-theme #page-moments-publish :is(.moments-publish-tip,.moments-publish-section-title) {
+  color: rgba(255,255,255,.76) !important;
+  -webkit-text-fill-color: rgba(255,255,255,.76) !important;
+}
+
+/* 首页顶部：与字卡/发现/设置一致——安全区为纯黑，不做 blur。 */
+#page-home::before {
+  content: '';
+  position: fixed;
+  z-index: 205;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-top, env(safe-area-inset-top));
+  background: #000 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none;
+}
