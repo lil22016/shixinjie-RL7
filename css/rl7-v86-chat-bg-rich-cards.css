@@ -1,0 +1,20 @@
+/* RL7 V86 */
+#page-chat-room.rl7-chat-bg-none{background:transparent!important;background-color:transparent!important;background-image:none!important}
+#page-chat-room.rl7-chat-bg-none #chat-messages{background:transparent!important}
+#page-chat-room .chat-bg-options{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+#page-chat-room .chat-bg-swatch.rl7-bg-choice{position:relative!important;min-height:64px!important;border-radius:14px!important;border:1px solid rgba(255,255,255,.28)!important;overflow:hidden!important}
+#page-chat-room .rl7-bg-name{position:absolute!important;left:5px!important;right:5px!important;bottom:4px!important;font-size:10px!important;color:#fff!important;text-shadow:0 1px 3px #000!important;text-align:center!important}
+#page-chat-room .rl7-bg-none-choice{background:repeating-linear-gradient(135deg,rgba(255,255,255,.12) 0 7px,rgba(255,255,255,.03) 7px 14px)!important}
+#page-chat-room .rl7-bg-none-mark{font-size:27px!important;color:#fff!important}
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v86>.message-body,
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v86>.message-body.rl7-game-invite-shell,
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v86>.message-body.rl7-feature-card-shell{
+width:auto!important;max-width:calc(100% - 76px)!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;outline:0!important;background:transparent!important;background-color:transparent!important;background-image:none!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important;text-shadow:none!important}
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v86>.message-body>.message-bubble.rl7-rich-card-v86,
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v86.rl7-game-invite-row>.message-body>.message-bubble.rl7-rich-card-v86,
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v86>.message-body>.message-bubble.forward-bubble.rl7-rich-card-v86{
+display:inline-flex!important;flex-direction:column!important;width:min(330px,76vw)!important;max-width:100%!important;height:auto!important;min-height:0!important;box-sizing:border-box!important;padding:14px 16px!important;margin:2px 0 4px!important;border-radius:21px!important;background:var(--rl7-lg-surface)!important;background-color:var(--rl7-lg-surface)!important;background-image:none!important;border:1px solid var(--rl7-lg-border)!important;outline:0!important;box-shadow:var(--rl7-lg-shadow)!important;-webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;color:#fff!important;-webkit-text-fill-color:currentColor!important;overflow:hidden!important}
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v86>.message-body>.message-meta{position:static!important;display:flex!important;width:auto!important;height:auto!important;min-height:0!important;margin:2px 0 0!important;padding:0 2px!important;background:transparent!important;background-color:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important;color:rgba(255,255,255,.68)!important}
+html.liquid-theme #page-chat-room .rl7-rich-card-v86 :is(.forward-card-title,.forward-card-title span,.forward-card-row,.fcr-name,.fcr-text,.forward-card-foot,.forward-card-foot i){color:inherit!important;-webkit-text-fill-color:currentColor!important}
+html.liquid-theme #page-chat-room .rl7-rich-card-v86 .forward-card-row{border-color:rgba(255,255,255,.10)!important}
+html.liquid-theme #page-chat-room .rl7-rich-card-v86 .forward-card-foot{border-color:rgba(255,255,255,.16)!important;opacity:.72!important}
