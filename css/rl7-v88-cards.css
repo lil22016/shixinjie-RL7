@@ -1,0 +1,42 @@
+/* RL7 V88 — direct card presentation. PF restored independently. */
+/* Private Frequency: compact original card proportions, never giant. */
+html.liquid-theme #page-chat-room .rl7-pf-row>.message-body{width:auto!important;max-width:calc(100% - 76px)!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+html.liquid-theme #page-chat-room .rl7-private-frequency-card{
+ width:min(330px,76vw)!important;max-width:100%!important;min-width:0!important;min-height:0!important;
+ display:grid!important;grid-template-columns:42px minmax(0,1fr) 18px!important;align-items:center!important;gap:11px!important;
+ padding:13px 14px!important;border-radius:21px!important;background:var(--rl7-lg-surface)!important;
+ border:1px solid var(--rl7-lg-border)!important;box-shadow:var(--rl7-lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important;text-align:left!important;overflow:hidden!important
+}
+#page-chat-room .rl7-pf-icon{width:42px!important;height:42px!important;border-radius:12px!important;display:grid!important;place-items:center!important;background:rgba(255,255,255,.09)!important;border:1px solid rgba(255,255,255,.13)!important}
+#page-chat-room .rl7-pf-icon svg{width:25px!important;height:25px!important;display:block!important}
+#page-chat-room .rl7-pf-icon path{fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+#page-chat-room .rl7-pf-copy{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0!important}
+#page-chat-room .rl7-pf-copy strong{font-size:15px!important;color:#fff!important}
+#page-chat-room .rl7-pf-copy>span{font-size:13px!important;line-height:1.35!important;color:rgba(255,255,255,.78)!important}
+#page-chat-room .rl7-pf-arrow{font-size:22px!important;color:#fff!important}
+html.liquid-theme #page-chat-room .rl7-pf-row>.message-body>.message-meta{position:static!important;margin:2px 0 0!important;padding:0 2px!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+
+/* Game/science/recipe/forward: outer body is NEVER the card. */
+html.liquid-theme body #page-chat-room .rl7-v88-card-row>.message-body,
+html.liquid-theme body #page-chat-room .rl7-v88-card-row>.message-body.rl7-game-invite-shell,
+html.liquid-theme body #page-chat-room .rl7-v88-card-row>.message-body.rl7-feature-card-shell{
+ width:auto!important;max-width:calc(100% - 76px)!important;height:auto!important;min-height:0!important;
+ padding:0!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;background-color:transparent!important;
+ box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important
+}
+html.liquid-theme body #page-chat-room .rl7-v88-card-row>.message-body>.message-bubble.rl7-v88-card,
+html.liquid-theme body #page-chat-room .rl7-v88-card-row.rl7-game-invite-row>.message-body>.message-bubble.rl7-v88-card{
+ width:min(330px,76vw)!important;max-width:100%!important;height:auto!important;min-height:0!important;
+ box-sizing:border-box!important;padding:14px 16px!important;margin:2px 0 4px!important;border-radius:21px!important;
+ background:var(--rl7-lg-surface)!important;background-color:var(--rl7-lg-surface)!important;
+ border:1px solid var(--rl7-lg-border)!important;box-shadow:var(--rl7-lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important;-webkit-text-fill-color:currentColor!important;overflow:hidden!important
+}
+html.liquid-theme body #page-chat-room .rl7-v88-card-row>.message-body>.message-meta{
+ position:static!important;display:flex!important;width:auto!important;height:auto!important;min-height:0!important;
+ margin:2px 0 0!important;padding:0 2px!important;background:transparent!important;border:0!important;box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important
+}

@@ -1,4 +1,4 @@
-/* RL7 V85 — Private Frequency invitation. Direct renderer, no DOM scan. */
+/* RL7 V88 — Private Frequency restored to the original compact V69 card structure. */
 (function(){
 'use strict';
 if(window.__RL7_V69_PRIVATE_FREQUENCY__)return;
@@ -8,14 +8,14 @@ var lines=["Come here. I have something more interesting in mind.","Private Freq
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
 function esc(s){try{return window.Core&&Core.escapeHtml?Core.escapeHtml(String(s)):String(s)}catch(e){return String(s)}}
 window.RL7OpenPrivateFrequencyInvite=function(){if(typeof window.openPrivateFrequency==='function'){window.openPrivateFrequency();return}var target='https://lil22016.github.io/shixinjie-RL7/nyx-control.html';var isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);location.href=isiOS?'bluefy://open?url='+encodeURIComponent(target):'nyx-control.html'};
-/* The icon is now embedded SVG. It does not depend on Font Awesome at all. */
-function pfIcon(){return '<span class="rl7-pf-svg-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M3 12h2.2l1.45-5.1L9.3 17l2.45-10 2.55 10 1.85-7 1.15 2H21"/></svg></span>'}
+function icon(){return '<span class="rl7-pf-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h2.2l1.45-5.1L9.3 17l2.45-10 2.55 10 1.85-7 1.15 2H21"/></svg></span>'}
 function cardHtml(msg,isSelf,selfAvatarHtml,otherAvatarHtml,suffixHtml,senderHtml,rowGroupCls){
  var line=(msg.privateFrequency&&msg.privateFrequency.line)||msg.text||lines[0];
  return '<div class="message-row '+(isSelf?'self':'other'+(rowGroupCls||''))+' rl7-pf-row" data-msg-id="'+msg.id+'">'+(isSelf?selfAvatarHtml:otherAvatarHtml)
  +'<div class="message-body">'+(senderHtml||'')
- +'<button type="button" class="rl7-private-frequency-card" onclick="RL7OpenPrivateFrequencyInvite()">'+pfIcon()
- +'<span class="rl7-pf-copy"><strong>Private Frequency</strong><span>'+esc(line)+'</span></span><span class="rl7-pf-arrow">›</span></button>'
+ +'<button type="button" class="rl7-private-frequency-card" onclick="RL7OpenPrivateFrequencyInvite()">'+icon()
+ +'<span class="rl7-pf-copy"><strong>Private Frequency</strong><span>'+esc(line)+'</span></span>'
+ +'<span class="rl7-pf-arrow">›</span></button>'
  +(suffixHtml||'')+'<div class="message-meta"><div class="message-time">'+(window.Core&&Core.formatTime?Core.formatTime(msg.time):'')+'</div></div></div></div>';
 }
 function installRenderer(){if(typeof window._buildNormalMessageHtml!=='function')return false;if(window._buildNormalMessageHtml.__rl7pf69)return true;var old=window._buildNormalMessageHtml;function wrapped(msg,isSelf,selfAvatarHtml,otherAvatarHtml,suffixHtml,senderName,senderStatusHtml,rowGroupCls){if(msg&&msg.msgType==='private_frequency'){var senderHtml=senderName?'<div class="message-sender-name">'+esc(senderName)+(senderStatusHtml||'')+'</div>':'';return cardHtml(msg,isSelf,selfAvatarHtml,otherAvatarHtml,suffixHtml,senderHtml,rowGroupCls)}return old.apply(this,arguments)}wrapped.__rl7pf69=1;window._buildNormalMessageHtml=wrapped;return true}
