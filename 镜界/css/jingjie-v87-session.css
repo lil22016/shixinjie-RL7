@@ -1,0 +1,14 @@
+.reading-area{align-content:center!important}
+.divine-session-question{
+ flex:0 0 100%;width:100%;box-sizing:border-box;text-align:center;
+ font-size:13px;line-height:1.45;color:var(--theme-text-dark);
+ padding:4px 14px 10px;margin:0 0 4px;font-weight:500;word-break:break-word
+}
+.divine-session-question span{display:inline-block;max-width:92%}
+#fan-scroll-container.session-limit-reached{pointer-events:none;opacity:.72}
+#fan-scroll-container.session-complete{pointer-events:none;opacity:.55}
+/* Six cards: 3 + 3 rather than 4 + 2. */
+@media (min-width:360px){
+ .reading-area:has(.reading-card:nth-of-type(6)){--reading-card-w:90px;--reading-card-h:126px;column-gap:12px}
+ .reading-area:has(.reading-card:nth-of-type(6)) .reading-card{width:90px;height:126px}
+}

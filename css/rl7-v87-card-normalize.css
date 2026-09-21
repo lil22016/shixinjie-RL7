@@ -1,0 +1,30 @@
+/* RL7 V87 — PF is intentionally NOT selected anywhere in this file. */
+/* Remove legacy outer shells only on rows positively identified as non-PF rich cards. */
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v87>.message-body,
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v87>.message-body.rl7-game-invite-shell,
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v87>.message-body.rl7-feature-card-shell{
+ width:auto!important;max-width:calc(100% - 76px)!important;height:auto!important;min-height:0!important;
+ padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
+ background:transparent!important;background-color:transparent!important;background-image:none!important;
+ box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+ overflow:visible!important;text-shadow:none!important
+}
+/* One visible card, using the exact same Liquid Glass variables PF uses. */
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v87>.message-body>.rl7-card-v87,
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v87.rl7-game-invite-row>.message-body>.rl7-card-v87{
+ width:min(330px,76vw)!important;max-width:100%!important;height:auto!important;min-height:0!important;
+ box-sizing:border-box!important;padding:14px 16px!important;margin:2px 0 4px!important;border-radius:21px!important;
+ background:var(--rl7-lg-surface)!important;background-color:var(--rl7-lg-surface)!important;background-image:none!important;
+ border:1px solid var(--rl7-lg-border)!important;box-shadow:var(--rl7-lg-shadow)!important;
+ -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;backdrop-filter:blur(var(--lg-blur)) saturate(100%)!important;
+ color:#fff!important;-webkit-text-fill-color:currentColor!important;overflow:hidden!important
+}
+/* Timestamp is a sibling below the card, never part of its visible shell. */
+html.liquid-theme body #page-chat-room .message-row.rl7-card-row-v87>.message-body>.message-meta{
+ position:static!important;display:flex!important;width:auto!important;height:auto!important;min-height:0!important;
+ margin:2px 0 0!important;padding:0 2px!important;background:transparent!important;border:0!important;box-shadow:none!important;
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible!important
+}
+html.liquid-theme #page-chat-room .rl7-card-v87 :is(.forward-card-title,.forward-card-title span,.forward-card-row,.fcr-name,.fcr-text,.forward-card-foot,.forward-card-foot i){
+ color:inherit!important;-webkit-text-fill-color:currentColor!important
+}
