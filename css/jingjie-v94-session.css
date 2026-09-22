@@ -1,7 +1,0 @@
-/* V94: draw limits must never disable the horizontal fan.
-   The JS count check owns the limit; this keeps scrolling/touch alive and prevents cross-session lock. */
-#fan-scroll-container.session-limit-reached,
-#fan-scroll-container.session-complete {
-  pointer-events: auto !important;
-  opacity: 1 !important;
-}
