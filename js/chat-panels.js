@@ -725,6 +725,9 @@ function _triggerIncomingCall(kind) {
   var name = _getCurrentPartnerName();
   var profile = _getCurrentPartnerProfile();
   var kindText = _incomingKind === 'video' ? '视频通话' : '语音通话';
+  if (typeof showBackgroundPush === 'function') {
+  showBackgroundPush(kindText + '来电…');
+  }
   // 与主动拨打保持一致：应用用户当前设置的通话背景
   var bg = (Storage.getCallBg ? Storage.getCallBg() : 0) || 0;
   var bgImg = (Storage.getCallBgImage ? Storage.getCallBgImage() : '') || '';
