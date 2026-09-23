@@ -42,7 +42,34 @@
 
   /* =========================================================
      STATUS BAR / SAFE AREA COLOR
+     (sole owner of theme-color — see note below)
      ========================================================= */
+  function rl7ForceDarkChrome(color) {
+    /* Force the chrome color dark (near-black #202126, same as the manifest
+       theme_color): transparent or light colors would paint the iOS system
+       status-bar cover white. Pure helper — no DOM, no storage, no side effects. */
+    try {
+      var c = String(color || '').trim().toLowerCase();
+      if (!c || c === 'transparent') return '#202126';
+      var r, g, b, a = 1, m = c.match(/rgba?\(([^)]+)\)/);
+      if (m) {
+        var p = m[1].split(',');
+        r = parseFloat(p[0]); g = parseFloat(p[1]); b = parseFloat(p[2]);
+        if (p.length > 3) a = parseFloat(p[3]);
+        if (!(a >= 0.5)) return '#202126';
+      } else if (c.charAt(0) === '#') {
+        var h = c.slice(1);
+        if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+        if (h.length < 6) return '#202126';
+        r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+      } else {
+        return '#202126';
+      }
+      if (isNaN(r) || isNaN(g) || isNaN(b)) return '#202126';
+      var lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      return lum > 0.55 ? '#202126' : color;
+    } catch (_) { return '#202126'; }
+  }
   function syncChromeColor() {
     var chat = false;
     var apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
@@ -51,17 +78,20 @@
       var page = document.getElementById('page-chat-room');
       chat = !!(page && page.classList.contains('active'));
     } catch (_) {}
-    /* Follow the active site theme on every non-chat tab.  The old hard-coded
-       #e9f7ed was the green sheet that remained visible on Wordcard/Discover/Settings. */
+    /* Follow the active site theme on every non-chat tab, then force it dark:
+       the iOS system status-bar cover is painted from theme-color, so white /
+       transparent would show as a white top strip. The old hard-coded #e9f7ed
+       was the green sheet that remained visible on Wordcard/Discover/Settings. */
     var color = '#0d0f10';
     if (!chat) {
       try {
         var cs = getComputedStyle(document.documentElement);
-        color = (cs.getPropertyValue('--bg-main') || cs.getPropertyValue('--background') || '').trim() || '#ffffff';
+        color = (cs.getPropertyValue('--bg-main') || cs.getPropertyValue('--background') || '').trim() || '#202126';
         /* theme-color needs a real color; if the theme variable is a gradient, use the
            actual computed app/body background instead. */
-        if (/gradient\(/i.test(color)) color = getComputedStyle(document.body).backgroundColor || '#ffffff';
-      } catch (_) { color = '#ffffff'; }
+        if (/gradient\(/i.test(color)) color = getComputedStyle(document.body).backgroundColor || '#202126';
+      } catch (_) { color = '#202126'; }
+      color = rl7ForceDarkChrome(color);
     }
 
     var meta = document.querySelector('meta[name="theme-color"]');
