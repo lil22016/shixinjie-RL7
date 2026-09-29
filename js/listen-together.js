@@ -26,6 +26,10 @@
 
   var LT = {
     SERVICE: 'http://127.0.0.1:9801',
+    AUTH_SERVICE: 'https://YOUR-MUSIC-SERVICE.example.com', // 部署后替换成 Render 地址（无结尾斜杠）
+    authToken: localStorage.getItem('lt_auth_token') || '',
+    authReady: false,
+    qrTimer: null,
     KEY_PL: 'lt_playlists',
     playlists: [],
     queue: [],
@@ -101,6 +105,7 @@
     try { LT.playlists = Storage.get(LT.KEY_PL, []) || []; } catch (e) { LT.playlists = []; }
     ltShowView('playlist');
     ltRenderPlaylists();
+    ltInitAuth();
     renderMiniBar();
     _renderTogetherSwitch();
     _syncVolumeUI();
@@ -209,6 +214,67 @@
       });
   }
 
+  /* ---------- 网易云账号：凭证只留在音乐服务端 ---------- */
+  function authEnabled() { return /^https:\/\//.test(LT.AUTH_SERVICE) && LT.AUTH_SERVICE.indexOf('YOUR-MUSIC-SERVICE') < 0; }
+  function authRequest(path) {
+    return fetch(LT.AUTH_SERVICE + path, { headers: LT.authToken ? { Authorization: 'Bearer ' + LT.authToken } : {} })
+      .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || '服务响应异常'); return d; }); });
+  }
+  function authStatus(message) { var el=$('lt-auth-status'); if(el) el.textContent=message; }
+  function authButtons(logged) {
+    if ($('lt-login-btn')) $('lt-login-btn').style.display=logged?'none':'';
+    if ($('lt-logout-btn')) $('lt-logout-btn').style.display=logged?'':'none';
+    var vipToggle=$('lt-skip-vip'); if(vipToggle && vipToggle.parentElement) vipToggle.parentElement.style.display=logged?'none':'';
+  }
+  function ltInitAuth() {
+    if (!authEnabled()) return;
+    $('lt-auth').style.display='block';
+    if (!LT.authToken) return;
+    authRequest('/me').then(function(d) {
+      LT.authReady=true; authStatus('已登录：'+(d.nickname||'网易云用户')); authButtons(true);
+      ltLoadMyPlaylists();
+    }).catch(function() { LT.authToken=''; localStorage.removeItem('lt_auth_token'); authStatus('登录已过期，请重新扫码'); });
+  }
+  window.ltQrLogin=function() {
+    if (!authEnabled()) return;
+    authStatus('正在生成二维码…');
+    authRequest('/qr/start').then(function(d) {
+      LT.authToken=d.token; localStorage.setItem('lt_auth_token',d.token);
+      $('lt-qr-image').src=d.qrimg; $('lt-qr-wrap').style.display='block';
+      if(LT.qrTimer) clearInterval(LT.qrTimer);
+      LT.qrTimer=setInterval(function() {
+        authRequest('/qr/check').then(function(result) {
+          if(result.code===803) {
+            clearInterval(LT.qrTimer); LT.qrTimer=null;
+            $('lt-qr-wrap').style.display='none'; LT.authReady=true;
+            authStatus('已登录：'+(result.nickname||'网易云用户')); authButtons(true); ltLoadMyPlaylists();
+          } else if(result.code===800) {
+            clearInterval(LT.qrTimer); LT.qrTimer=null;
+            authStatus('二维码已过期，请重新生成'); $('lt-qr-status').textContent='二维码已过期';
+          } else $('lt-qr-status').textContent=result.code===802?'已扫码，请在网易云 App 中确认':'等待扫码…';
+        }).catch(function(e) { authStatus(e.message); });
+      },2500);
+    }).catch(function(e) {authStatus('无法生成二维码：'+e.message);});
+  };
+  window.ltLogout=function() {
+    if(LT.qrTimer) clearInterval(LT.qrTimer);
+    authRequest('/logout').catch(function(){});
+    LT.authToken=''; LT.authReady=false; localStorage.removeItem('lt_auth_token');
+    LT.playlists=LT.playlists.filter(function(p){return !p.remote;});
+    Storage.set(LT.KEY_PL,LT.playlists); ltRenderPlaylists();
+    authButtons(false); authStatus('网易云未登录');
+  };
+  function ltLoadMyPlaylists() {
+    authRequest('/playlists').then(function(d) {
+      LT.playlists=LT.playlists.filter(function(p){return !p.remote;});
+      (d.playlist||[]).forEach(function(p) {
+        if(LT.playlists.some(function(old){return String(old.id)===String(p.id)})) return;
+        LT.playlists.push({id:p.id,name:p.name,cover:p.coverImgUrl,count:p.trackCount,songs:[],remote:true});
+      });
+      Storage.set(LT.KEY_PL,LT.playlists); ltRenderPlaylists();
+      authStatus('已登录；已同步 '+(d.playlist||[]).length+' 个歌单');
+    }).catch(function(e){authStatus('歌单读取失败：'+e.message);});
+  }
   /* ---------- 服务检测 ---------- */
   function setServiceText(text, cls) {
     var el = $('lt-service-text');
@@ -450,6 +516,12 @@
     }
 
     busy(true);
+    if (LT.authReady) {
+      authRequest('/playlist?id='+encodeURIComponent(pid)).then(function(d){
+        busy(false); finish('网易云歌单 '+pid,(d.songs||[]).map(function(song){song.auth=true;return song;}));
+      }).catch(function(e){busy(false);setServiceText('导入失败：'+e.message,'warn');});
+      return;
+    }
     if (LT.srcMode !== 'local' || !LT.serviceOk) {
       // 在线兜底：GitHub 静态部署 / 本地服务不可用 / 检测未完成时，走公共接口
       _onlineImportPlaylist(pid)
@@ -492,6 +564,15 @@
   /* ---------- 打开歌单（展示其歌曲列表，从上次位置续播，不再强制从头开始） ---------- */
   window.ltOpenPlaylist = function (idx) {
     var p = LT.playlists[idx];
+    if (p && p.remote && (!p.songs || !p.songs.length)) {
+      setServiceText('正在读取歌单…');
+      authRequest('/playlist?id='+encodeURIComponent(p.id)).then(function(d) {
+        p.songs=(d.songs||[]).map(function(song) {song.auth=true; return song;});
+        if(!p.songs.length) throw new Error('歌单为空');
+        Storage.set(LT.KEY_PL,LT.playlists); ltOpenPlaylist(idx);
+      }).catch(function(e){setServiceText('读取失败：'+e.message,'warn');});
+      return;
+    }
     if (!p || !p.songs || !p.songs.length) { setServiceText('该歌单暂无歌曲', 'warn'); return; }
     LT.queue = p.songs.slice();
     LT._curPlaylistId = p.id;
@@ -590,7 +671,12 @@
     renderPlayerInfo(song);
     renderMiniBar();
     var audio = getAudio();
-    if (song && song.url) {
+    if (song && song.auth && LT.authReady) {
+      authRequest('/song/url?id='+encodeURIComponent(song.id)).then(function(d) {
+        if(!d.url) throw new Error('该歌曲暂无可播放地址或账号无权限');
+        audio.src=d.url; return audio.play();
+      }).catch(function(e){setServiceText('播放失败：'+e.message,'warn');});
+    } else if (song && song.url) {
       // 直连模式：歌曲自带可播放地址，无需本地服务（GitHub 部署同样可用）
       audio.src = song.url;
       var pd = audio.play();

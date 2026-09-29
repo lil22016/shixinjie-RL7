@@ -501,6 +501,15 @@
           <i class="fas fa-circle-info"></i><span id="lt-service-text">正在检测音乐服务…</span>
           <span class="lt-service-actions" id="lt-service-actions"></span>
         </div>
+        <div class="lt-auth" id="lt-auth" style="padding:10px 14px;display:none">
+          <div id="lt-auth-status">网易云未登录</div>
+          <button class="lt-btn lt-btn-primary" onclick="ltQrLogin()" id="lt-login-btn">扫码登录网易云</button>
+          <button class="lt-btn" onclick="ltLogout()" id="lt-logout-btn" style="display:none">退出</button>
+          <div id="lt-qr-wrap" style="display:none;text-align:center;padding:10px">
+            <img id="lt-qr-image" alt="网易云登录二维码" style="width:180px;height:180px;background:white">
+            <div id="lt-qr-status">用网易云音乐 App 扫码并确认</div>
+          </div>
+        </div>
         <div class="lt-tabs">
           <div class="lt-tab active" id="lt-tab-pl" onclick="ltSwitchTab('pl')">我的歌单</div>
           <div class="lt-tab" id="lt-tab-search" onclick="ltSwitchTab('search')">搜索</div>
@@ -2239,7 +2248,7 @@
 <script src="js/love-apps.js?v=20260901e"></script>
 <script src="js/bookshelf.js?v=20260901p"></script>
 <script src="js/mini-games.js?v=20260902a"></script>
-<script src="js/listen-together.js?v=20260902e"></script>
+<script src="js/listen-together.js?v=20260929-auth1"></script>
 <script src="js/partner-freewill.js?v=20260902f"></script>
 <script src="js/account.js?v=20260902a"></script>
 
