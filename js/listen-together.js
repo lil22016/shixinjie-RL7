@@ -26,7 +26,7 @@
 
   var LT = {
     SERVICE: 'http://127.0.0.1:9801',
-    AUTH_SERVICE: 'https://YOUR-MUSIC-SERVICE.example.com', // 部署后替换成 Render 地址（无结尾斜杠）
+    AUTH_SERVICE: 'https://rl7-music.onrender.com', // 部署后替换成 Render 地址（无结尾斜杠）
     authToken: localStorage.getItem('lt_auth_token') || '',
     authReady: false,
     qrTimer: null,
