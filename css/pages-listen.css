@@ -109,6 +109,9 @@ html.liquid-theme .lt-panel {
   color: var(--text-medium, #606878);
 }
 .lt-service-bar i { color: var(--primary-dark, #98C0D8); }
+.lt-player-status { flex-shrink: 0; background: #30353e; color: #fff; line-height: 1.4; overflow-wrap: anywhere; }
+.lt-player-status-warn { background: #49393b; color: #fff; }
+.lt-player-status span { min-width: 0; }
 .lt-service-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .lt-link-btn {
   border: none;
