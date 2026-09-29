@@ -8,7 +8,8 @@
 .lt-overlay {
   position: fixed;
   inset: 0;
-  z-index: 430;
+  /* 聊天页本身被固定到 z-index:10000；音乐页是它的兄弟节点。 */
+  z-index: 10050 !important;
   /* 独立页面必须有实体背景。Liquid Glass 的 --bg-main 会变成 transparent。 */
   background: var(--bg-main, #F0F4F8);
   display: flex;
