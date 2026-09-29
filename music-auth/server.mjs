@@ -72,13 +72,30 @@ const server=http.createServer(async(req,res)=>{
       const id=param(url,'id'); if(!/^\d+$/.test(id)) return fail(res,400,'歌单 ID 无效');
       const d=await ncm('/playlist/track/all',{id,limit:1000,cookie:s.cookie});
       const tracks=d.songs||[];
-      return send(res,200,{songs:tracks.map(t=>({id:t.id,name:t.name,artist:(t.ar||t.artists||[]).map(a=>a.name).join(' / '),cover:t.al?.picUrl||'',duration:t.dt||0}))});
+      return send(res,200,{songs:tracks.map(t=>({id:t.id,name:t.name,artist:(t.ar||t.artists||[]).map(a=>a.name).join(' / '),cover:t.al?.picUrl||'',duration:t.dt||0,fee:t.fee}))});
     }
     if(url.pathname==='/song/url') {
       const id=param(url,'id'); if(!/^\d+$/.test(id)) return fail(res,400,'歌曲 ID 无效');
-      const d=await ncm('/song/url/v1',{id,level:'standard',cookie:s.cookie});
-      const media=d.data?.[0]?.url;
-      return send(res,200,{url:media?.startsWith('https://')?media:null});
+      let media=null, source=null;
+      const attempts=[];
+      // Some NetEase responses return an http CDN URL even for playable songs.
+      // Prefer the newer endpoint, then try the older standard-quality endpoint.
+      for(const [path,query] of [
+        ['/song/url/v1',{id,level:'standard',cookie:s.cookie}],
+        ['/song/url',{id,br:128000,cookie:s.cookie}]
+      ]) {
+        try {
+          const d=await ncm(path,query);
+          const item=d.data?.[0] || {};
+          const candidate=item.url;
+          attempts.push({endpoint:path,code:d.code ?? null,itemCode:item.code ?? null,fee:item.fee ?? null,hasUrl:!!candidate});
+          if(typeof candidate==='string' && /^https?:\/\//i.test(candidate)) {
+            media=candidate.replace(/^http:\/\//i,'https://');
+            source=path; break;
+          }
+        } catch(e) { attempts.push({endpoint:path,error:e.message}); }
+      }
+      return send(res,200,{url:media,source,attempts});
     }
     return fail(res,404,'接口不存在');
   } catch(e) {return fail(res,502,e.message||'音乐服务暂不可用');}
