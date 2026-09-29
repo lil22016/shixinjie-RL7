@@ -419,6 +419,7 @@
   function ltRenderPlaylists() {
     var box = $('lt-playlist-list');
     if (!box) return;
+    if($('lt-queue-actions'))$('lt-queue-actions').style.display='none';
     var back = $('lt-head-back-pl');
     if (back) back.style.display = 'none';
     var empty = $('lt-empty');
@@ -582,20 +583,25 @@
     if (!p || !p.songs || !p.songs.length) { setServiceText('该歌单暂无歌曲', 'warn'); return; }
     LT.queue = p.songs.slice();
     LT._curPlaylistId = p.id;
-    // 记忆上次播放位置：再次进入歌单直接续播，不从头开始
-    var start = 0;
-    if (typeof p.lastIndex === 'number' && p.lastIndex >= 0 && p.lastIndex < p.songs.length) {
-      start = p.lastIndex;
-    }
-    LT.index = start;
+    // Opening a playlist only shows its tracks. Playback requires a song tap or Shuffle.
+    if(LT.audio){ LT.audio.pause(); LT.audio.removeAttribute('src'); LT.audio.load(); }
+    LT.index = -1; LT.sessionStarted=false; LT.loggedTrack=''; _stopTalkScheduler(); renderFloat(); renderMiniBar();
     renderQueue();
-    ltPlay(start, true);
+  };
+
+  window.ltPlayRandom=function(){
+    if(!LT.queue.length)return;
+    LT.mode='shuffle'; renderModeBtn();
+    ltPlay(Math.floor(Math.random()*LT.queue.length));
+    ltShowView('player');
   };
 
   function renderQueue() {
     var box = $('lt-playlist-list');
     if (!box) return;
     if (!LT.queue.length) { ltRenderPlaylists(); return; }
+    if($('lt-queue-actions'))$('lt-queue-actions').style.display='flex';
+    if($('lt-queue-count'))$('lt-queue-count').textContent=LT.queue.length+' 首';
     var html = '';
     for (var i = 0; i < LT.queue.length; i++) {
       var s = LT.queue[i];
@@ -649,6 +655,7 @@
       });
       LT.audio.addEventListener('play', function () {
         LT.playing = true; window.__musicPlaying = true;
+        if($('lt-player-status'))$('lt-player-status').style.display='none';
         if (!LT.sessionStarted) { LT.sessionStarted = true; _partnerSay(_musicLine('open', OPEN_TEXTS), true, '邀请'); }
         var current=LT.queue[LT.index];
         if(current && LT.loggedTrack!==String(current.id)) { LT.loggedTrack=String(current.id); addLog('开始播放「'+current.name+'」'); }
@@ -815,19 +822,18 @@
 
   function _syncVolumeUI() {
     var vb = $('lt-volume');
-    if (!vb) return;
     var vol = 0.8;
     try {
       var sv = Number(Storage.get('lt_volume', 0.8));
       if (isFinite(sv) && sv >= 0 && sv <= 1) vol = sv;
     } catch (e) {}
-    vb.value = Math.round(vol * 100);
+    if (vb) vb.value = Math.round(vol * 100);
     if (LT.audio) LT.audio.volume = vol;
   }
 
   /* ---------- 播放模式：顺延 / 循环 / 随机 ---------- */
   window.ltSetMode = function (m) {
-    LT.mode = (m === 'loop' || m === 'shuffle') ? m : 'sequential';
+    LT.mode = m === LT.mode && m !== 'sequential' ? 'sequential' : (m === 'loop' || m === 'shuffle') ? m : 'sequential';
     renderModeBtn();
     if (typeof Core !== 'undefined' && Core.toast) {
       var names = { sequential: '顺延播放', loop: '循环播放', shuffle: '随机播放' };
@@ -914,8 +920,8 @@
   function renderMiniBar() {
     var bar = $('lt-minibar');
     if (!bar) return;
-    if (!LT.queue.length) { bar.style.display = 'none'; return; }
-    var song = LT.queue[LT.index] || LT.queue[0];
+    if (!LT.queue.length || LT.index < 0) { bar.style.display = 'none'; return; }
+    var song = LT.queue[LT.index];
     if (!song) { bar.style.display = 'none'; return; }
     bar.style.display = 'flex';
     var mc = $('lt-mini-cover');

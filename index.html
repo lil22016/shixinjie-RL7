@@ -48,7 +48,7 @@
 <link rel="stylesheet" href="css/pages-redpacket.css?v=20260829f">
 <link rel="stylesheet" href="css/bubble-maker.css?v=20260829f">
 <link rel="stylesheet" href="css/rl7-v79-bubble-shop-liquid.css?v=20260919v79">
-<link rel="stylesheet" href="css/pages-listen.css?v=20260929music6">
+<link rel="stylesheet" href="css/pages-listen.css?v=20260929music7">
 <link rel="stylesheet" href="css/pages-account.css?v=20260902c">
 <link rel="stylesheet" href="css/rl7-companion-home-v1.css?v=20260916icon64">
 
@@ -529,6 +529,7 @@
           <button class="lt-btn lt-btn-primary" onclick="ltSearch()">搜</button>
         </div>
         <div class="lt-list-wrap">
+          <div class="lt-queue-actions" id="lt-queue-actions" style="display:none"><button onclick="ltPlayRandom()"><i class="fas fa-random"></i> 随机播放</button><span id="lt-queue-count"></span></div>
           <div class="lt-list" id="lt-playlist-list"></div>
           <div class="lt-list" id="lt-search-list" style="display:none"></div>
           <div class="lt-empty" id="lt-empty">歌单为空，输入上方链接导入网易云歌单</div>
@@ -556,6 +557,7 @@
           <i class="fas fa-circle-info"></i><span id="lt-player-status-text"></span>
         </div>
         <div class="lt-player">
+          <div class="lt-player-card">
           <div class="lt-player-cover" id="lt-cover"><i class="fas fa-music"></i></div>
           <div class="lt-player-title" id="lt-song-title">未在播放</div>
           <div class="lt-player-artist" id="lt-song-artist"></div>
@@ -566,18 +568,11 @@
           </div>
           <div class="lt-controls">
             <button class="lt-ctl lt-ctl-shuffle" id="lt-mode-shuffle" onclick="ltSetMode('shuffle')" title="随机播放"><i class="fas fa-random"></i></button>
-            <div class="lt-vol-mini">
-              <i class="fas fa-volume-up"></i>
-              <input type="range" class="lt-volume-bar" id="lt-volume" min="0" max="100" value="80" oninput="ltSetVolume()" title="音量">
-            </div>
             <button class="lt-ctl" onclick="ltPrev()"><i class="fas fa-backward-step"></i></button>
             <button class="lt-ctl lt-ctl-play" id="lt-play-btn" onclick="ltTogglePlay()"><i class="fas fa-play"></i></button>
             <button class="lt-ctl" onclick="ltNext()"><i class="fas fa-forward-step"></i></button>
             <button class="lt-player-heart" id="lt-player-heart" onclick="ltRateSong('like')" aria-label="喜欢或取消喜欢"><i class="fas fa-heart"></i></button>
-            <div class="lt-mode-mini">
-              <button class="active" id="lt-mode-seq" onclick="ltSetMode('sequential')" title="顺延播放（按顺序，播完即停）"><i class="fas fa-list-ul"></i></button>
-              <button id="lt-mode-loop" onclick="ltSetMode('loop')" title="循环播放（播完自动回第一首）"><i class="fas fa-rotate-left"></i></button>
-            </div>
+          </div>
           </div>
           <button class="lt-player-playlist" onclick="ltGoPlaylist()"><span><i class="fas fa-chevron-right"></i> 我的歌单</span><span id="lt-player-count">0 首</span></button>
           <div class="lt-companion-card">
@@ -587,8 +582,6 @@
           <div class="lt-session">
             <div class="lt-session-head"><button onclick="ltToggleLog()" id="lt-log-toggle">SESSION ▾</button><button onclick="ltClearLog()">Clear</button></div>
             <div id="lt-session-log" class="lt-session-log" aria-live="polite"></div>
-            <div class="lt-rating"><button id="lt-rate-like" onclick="ltRateSong('like')">♡ 我喜欢</button><button id="lt-rate-dislike" onclick="ltRateSong('dislike')">✕ 我不喜欢</button></div>
-            <div id="lt-rating-state" class="lt-rating-state"></div>
           </div>
         </div>
       </div>
@@ -2282,7 +2275,7 @@
 <script src="js/love-apps.js?v=20260901e"></script>
 <script src="js/bookshelf.js?v=20260901p"></script>
 <script src="js/mini-games.js?v=20260902a"></script>
-<script src="js/listen-together.js?v=20260929-music6"></script>
+<script src="js/listen-together.js?v=20260929-music7"></script>
 <script src="js/partner-freewill.js?v=20260902f"></script>
 <script src="js/account.js?v=20260902a"></script>
 
