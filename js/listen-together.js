@@ -701,6 +701,7 @@
     renderQueue();
     renderPlayerInfo(song);
     renderRatings();
+    var count=$('lt-player-count'); if(count)count.textContent=LT.queue.length+' 首';
     renderMiniBar();
     renderFloat();
     var audio = getAudio();
@@ -893,6 +894,9 @@
   }
 
   function renderPlayerInfo(song) {
+    var companion=$('lt-companion-line'),companionStatus=$('lt-companion-status');
+    if(companion)companion.textContent='“听听这首怎么样。”';
+    if(companionStatus)companionStatus.textContent='TA 正在听「'+(song.name||'这首歌')+'」';
     var cover = $('lt-cover');
     if (cover) {
       if (song.cover) cover.innerHTML = '<img src="' + esc(safeCover(song.cover)) + '" alt="">';
@@ -942,11 +946,17 @@
 
   // 角色主动动作：暂停 / 切歌 / 恢复播放 / 点评（整体低频，静默率 40%）
   function _partnerAction() {
+    var song=LT.queue[LT.index],opinion=song&&ratings()[String(song.id)]?.partner;
+    if(song && LT.queue.length>1 && LT.playing && opinion==='dislike' && Math.random()<0.36) {
+      addLog('TA 不喜欢「'+song.name+'」，切到了下一首');
+      _partnerSay(_musicLine('skip', SKIP_TEXTS),false,'TA 切歌');
+      window.ltNext(true); return;
+    }
     var r = Math.random();
     // 每次调度并不必触发动作：40% 静默，保证主动动作整体低频
     if (r >= 0.60) { LT._lastAction = 'idle'; return; }
     // 动作区间分配：暂停16% / 切歌14% / 恢复播放14% / 点评16%
-    if (r < 0.16) {
+    if (r < 0.12) {
       // 暂停（需正在播放）
       if (LT.audio && !LT.audio.paused && LT.audio.src) {
         LT._lastAction = 'pause';
@@ -955,7 +965,7 @@
         LT.audio.pause(); LT.playing = false; renderPlayBtn();
         return;
       }
-    } else if (r < 0.30) {
+    } else if (r < (opinion==='like'?0.125:0.30)) {
       // 切歌（需歌单多于 1 首）
       if (LT.queue.length > 1) {
         LT._lastAction = 'skip';
@@ -981,7 +991,9 @@
       }
     } else {
       // 点评（无前置条件）
-      LT._lastAction = Math.random() < 0.78 ? 'praise' : 'dislike';
+      var userRating= song&&ratings()[String(song.id)]?.user;
+      var likeChance=opinion==='like'?0.92:opinion==='dislike'?0.10:userRating==='like'?0.86:userRating==='dislike'?0.38:0.72;
+      LT._lastAction = Math.random() < likeChance ? 'praise' : 'dislike';
       saveRating('partner',LT._lastAction === 'praise' ? 'like' : 'dislike');
       addLog('TA '+(LT._lastAction === 'praise' ? '喜欢' : '踩了')+'「'+(LT.queue[LT.index]?.name||'当前歌曲')+'」');
       _partnerSay(LT._lastAction === 'praise' ? _musicLine('praise', PRAISE_TEXTS) : _musicLine('dislike', DISLIKE_TEXTS), false, LT._lastAction === 'praise' ? 'TA 喜欢这首' : 'TA 踩了这首');
@@ -999,6 +1011,9 @@
     if (!force && now - _lastSayAt < 6000) return;
     _lastSayAt = now;
     addLog((label || 'TA') + '：' + text);
+    var line=$('lt-companion-line'),status=$('lt-companion-status');
+    if(line)line.textContent='“'+text+'”';
+    if(status)status.textContent=label||'TA 正在听';
   }
 
   /* ---------- 语料 ---------- */
@@ -1055,13 +1070,18 @@
   var DISLIKE_TEXTS = ['这首似乎不太合我心意。', '我想听点别的，可以换一首吗？'];
   var RATE_TEXTS = ['你喜欢的话，我会再陪你听一遍。', '好，我记住你喜欢这首了。'];
   var RATE_DISLIKE_TEXTS = ['那我们换一首，听你喜欢的。', '好，这首先跳过。'];
+  var RATE_AGREE_TEXTS=['看来这次我们的品味一致。','这首我也喜欢，留着再听。'];
+  var RATE_DIFFER_TEXTS=['你喜欢这首？我再听听看。','我们的品味看来并不总是一致。'];
+  var RATE_REMOVE_TEXTS=['改变主意了？好，我记下了。','那这首先放一边。'];
   var CARD_TYPES = [
     ['open','听歌邀请',OPEN_TEXTS], ['praise','TA 喜欢',PRAISE_TEXTS],
     ['dislike','TA 不喜欢',DISLIKE_TEXTS], ['skip','TA 切歌',SKIP_TEXTS],
     ['pause','TA 暂停',PAUSE_TEXTS], ['resume','TA 继续',RESUME_TEXTS],
     ['userPause','你暂停',USER_PAUSE_TEXTS], ['userSkip','你切歌',USER_SKIP_TEXTS],
     ['autoNext','自动下一首',AUTO_NEXT_TEXTS], ['userLike','你点赞',RATE_TEXTS],
-    ['userDislike','你点踩',RATE_DISLIKE_TEXTS]
+    ['userDislike','你点踩',RATE_DISLIKE_TEXTS],
+    ['agreeLike','你和 TA 都喜欢',RATE_AGREE_TEXTS],['disagreeLike','你喜欢但 TA 不喜欢',RATE_DIFFER_TEXTS],
+    ['removeRating','你取消评价',RATE_REMOVE_TEXTS]
   ];
   function musicCards() {
     try { return JSON.parse(localStorage.getItem('lt_music_cards') || '{}') || {}; } catch (e) { return {}; }
@@ -1085,18 +1105,19 @@
     try { localStorage.setItem('lt_music_cards',JSON.stringify(data)); $('lt-card-save-status').textContent='已保存 '+data[select.value].length+' 条'; }
     catch(e){$('lt-card-save-status').textContent='保存失败：浏览器存储空间不足';}
   };
-  function addLog(text) { if(!text)return; LT.log.push({time:Date.now(),text:text}); renderLog(); }
+  function addLog(text) { if(!text)return; LT.log.push({time:Date.now(),text:text});if(LT.log.length>60)LT.log.shift(); renderLog(); }
   function renderLog() {
     var el=$('lt-session-log'); if(!el)return;
-    el.innerHTML=LT.log.length ? LT.log.map(function(item){return '<p><small>'+new Date(item.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</small> '+esc(item.text)+'</p>';}).join('') : '<p>这次还没有记录</p>';
-    el.scrollTop=el.scrollHeight;
+    el.innerHTML=LT.log.length ? LT.log.slice().reverse().map(function(item){return '<p><small>'+new Date(item.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</small> '+esc(item.text)+'</p>';}).join('') : '<p>这次还没有记录</p>';
+    el.scrollTop=0;
   }
-  window.ltToggleLog=function(){var el=$('lt-session-log');if(!el)return;el.hidden=!el.hidden;$('lt-log-toggle').textContent='本次听歌记录 '+(el.hidden?'▸':'▾');};
+  window.ltToggleLog=function(){var el=$('lt-session-log');if(!el)return;el.hidden=!el.hidden;$('lt-log-toggle').textContent='SESSION '+(el.hidden?'▸':'▾');};
   window.ltClearLog=function(){LT.log=[];renderLog();};
   function ratings(){try{return JSON.parse(localStorage.getItem('lt_song_ratings')||'{}')||{};}catch(e){return {};}}
   function saveRating(who,kind){
     var song=LT.queue[LT.index];if(!song || !song.id)return;
-    var data=ratings(),id=String(song.id);data[id]=data[id]||{};data[id][who]=kind;
+    var data=ratings(),id=String(song.id);data[id]=data[id]||{};
+    if(kind==='neutral')delete data[id][who];else data[id][who]=kind;
     try{localStorage.setItem('lt_song_ratings',JSON.stringify(data));}catch(e){}
     renderRatings();
   }
@@ -1104,13 +1125,22 @@
     var song=LT.queue[LT.index],item=song&&ratings()[String(song.id)]||{};
     if($('lt-rate-like'))$('lt-rate-like').classList.toggle('active',item.user==='like');
     if($('lt-rate-dislike'))$('lt-rate-dislike').classList.toggle('active',item.user==='dislike');
+    if($('lt-player-heart'))$('lt-player-heart').classList.toggle('active',item.user==='like');
+    if($('lt-partner-heart'))$('lt-partner-heart').classList.toggle('on',item.partner==='like');
+    if($('lt-partner-dislike'))$('lt-partner-dislike').classList.toggle('on',item.partner==='dislike');
     if($('lt-rating-state'))$('lt-rating-state').textContent=item.partner ? 'TA '+(item.partner==='like'?'喜欢':'不喜欢')+'这首歌' : '';
   }
   window.ltRateSong=function(kind){
     var song=LT.queue[LT.index];if(!song)return;
-    saveRating('user',kind);
-    addLog('你'+(kind==='like'?'喜欢':'踩了')+'「'+song.name+'」');
-    _partnerSay(_musicLine(kind==='like'?'userLike':'userDislike',kind==='like'?RATE_TEXTS:RATE_DISLIKE_TEXTS),true,'TA 回应');
+    var old=ratings()[String(song.id)]||{},next=old.user===kind?'neutral':kind;
+    saveRating('user',next);
+    addLog('你'+(next==='neutral'?'取消了对':next==='like'?'喜欢':'踩了')+'「'+song.name+'」'+(next==='neutral'?'的评价':''));
+    var category,defaultLines;
+    if(next==='neutral'){category='removeRating';defaultLines=RATE_REMOVE_TEXTS;}
+    else if(next==='like'&&old.partner==='like'){category='agreeLike';defaultLines=RATE_AGREE_TEXTS;}
+    else if(next==='like'&&old.partner==='dislike'){category='disagreeLike';defaultLines=RATE_DIFFER_TEXTS;}
+    else {category=next==='like'?'userLike':'userDislike';defaultLines=next==='like'?RATE_TEXTS:RATE_DISLIKE_TEXTS;}
+    _partnerSay(_musicLine(category,defaultLines),true,'TA 回应');
   };
   function updateMediaSession(){
     if(!navigator.mediaSession)return;
@@ -1122,6 +1152,12 @@
   }
   function renderFloat(){var el=$('lt-float');if(el)el.style.display=LT.sessionStarted?'flex':'none';}
   window.ltFloatToggle=function(){var el=$('lt-float-actions');if(el)el.style.display=el.style.display==='none'?'flex':'none';};
+  window.ltFloatOpenPlayer=function(){
+    if(!LT.queue.length)return;
+    window.openListenTogetherPanel();
+    window.ltGoPlayer();
+    var actions=$('lt-float-actions');if(actions)actions.style.display='none';
+  };
   window.ltStopMusic=function(){
     _stopTalkScheduler(); LT.sessionStarted=false;LT.queue=[];LT.index=-1;LT.loggedTrack='';LT.playing=false;window.__musicPlaying=false;LT.log=[];renderLog();
     if(LT.audio){LT.audio.pause();LT.audio.removeAttribute('src');LT.audio.load();}
@@ -1130,11 +1166,16 @@
   };
   function initFloatDrag(){
     var el=$('lt-float'),handle=$('lt-float-main');if(!el||!handle)return;
-    var sx,sy,ox,oy,moved=false;
+    var sx,sy,ox,oy,moved=false,lastTap=0,tapTimer=null;
     handle.addEventListener('pointerdown',function(e){sx=e.clientX;sy=e.clientY;var r=el.getBoundingClientRect();ox=r.left;oy=r.top;moved=false;handle.setPointerCapture(e.pointerId);});
     handle.addEventListener('pointermove',function(e){if(sx===undefined)return;var dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;if(!moved)return;el.style.left=Math.max(0,Math.min(innerWidth-el.offsetWidth,ox+dx))+'px';el.style.top=Math.max(0,Math.min(innerHeight-el.offsetHeight,oy+dy))+'px';el.style.right='auto';el.style.bottom='auto';});
     handle.addEventListener('pointerup',function(){sx=undefined;});
-    handle.addEventListener('click',function(e){if(moved){e.stopImmediatePropagation();e.preventDefault();moved=false;}},true);
+    handle.addEventListener('click',function(e){
+      if(moved){e.stopImmediatePropagation();e.preventDefault();moved=false;lastTap=0;clearTimeout(tapTimer);return;}
+      var now=Date.now();
+      if(now-lastTap<330){clearTimeout(tapTimer);lastTap=0;window.ltFloatOpenPlayer();}
+      else {lastTap=now;tapTimer=setTimeout(function(){lastTap=0;window.ltFloatToggle();},330);}
+    });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initFloatDrag);else initFloatDrag();
 
