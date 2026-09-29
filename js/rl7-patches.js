@@ -10,7 +10,7 @@
   'use strict';
 
   var RL7 = window.RL7 = window.RL7 || {};
-  var VERSION = '20260927-patfix25';
+  var VERSION = '20260915-hardfix24';
   var LOC_KEY = 'rl7_whereabout_locations_v2';
   var ACT_KEY = 'rl7_whereabout_actions_v2';
 
@@ -44,25 +44,18 @@
      STATUS BAR / SAFE AREA COLOR
      ========================================================= */
   function syncChromeColor() {
-    var chat = false;
+    /* iOS/PWA chrome must stay pure black.
+       Do not derive it from --bg-main / wallpaper / active page:
+       light themes can otherwise turn the Home Screen status area white. */
+    var color = '#000000';
+
     var apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (apple) apple.setAttribute('content', 'default');
-    try {
-      var page = document.getElementById('page-chat-room');
-      chat = !!(page && page.classList.contains('active'));
-    } catch (_) {}
-    /* Follow the active site theme on every non-chat tab.  The old hard-coded
-       #e9f7ed was the green sheet that remained visible on Wordcard/Discover/Settings. */
-    var color = '#0d0f10';
-    if (!chat) {
-      try {
-        var cs = getComputedStyle(document.documentElement);
-        color = (cs.getPropertyValue('--bg-main') || cs.getPropertyValue('--background') || '').trim() || '#ffffff';
-        /* theme-color needs a real color; if the theme variable is a gradient, use the
-           actual computed app/body background instead. */
-        if (/gradient\(/i.test(color)) color = getComputedStyle(document.body).backgroundColor || '#ffffff';
-      } catch (_) { color = '#ffffff'; }
+    if (!apple) {
+      apple = document.createElement('meta');
+      apple.name = 'apple-mobile-web-app-status-bar-style';
+      document.head.appendChild(apple);
     }
+    apple.setAttribute('content', 'black');
 
     var meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -76,9 +69,11 @@
       document.documentElement.style.setProperty('--rl7-chrome-bg', color);
       document.documentElement.style.setProperty('background-color', color, 'important');
       document.body.style.setProperty('background-color', color, 'important');
+
+      /* Keep the app/page theme itself unchanged; only the system/safe-area
+         surface behind it is forced to black. */
       var app = document.getElementById('app');
-      if (app && !chat) app.style.setProperty('background-color', 'var(--bg-main)', 'important');
-      if (app && chat) app.style.removeProperty('background-color');
+      if (app) app.style.removeProperty('background-color');
     } catch (_) {}
   }
 
@@ -257,38 +252,29 @@
         position:fixed; inset:0; z-index:100000;
         display:flex; align-items:flex-end; justify-content:center;
         padding:14px; background:rgba(0,0,0,.28);
-        -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
       }
       .rl7-sheet-card {
         width:min(540px,100%); max-height:82dvh; overflow:auto;
-        box-sizing:border-box; border-radius:26px; padding:18px;
-        background:rgba(20,22,26,.58) !important;
-        color:rgba(255,255,255,.96) !important;
-        border:1px solid rgba(255,255,255,.24);
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.20),0 18px 60px rgba(0,0,0,.34);
-        -webkit-backdrop-filter:blur(28px) saturate(145%);
-        backdrop-filter:blur(28px) saturate(145%);
+        box-sizing:border-box; border-radius:24px; padding:18px;
+        background:rgba(246,255,249,.97); color:#25362f;
+        box-shadow:0 18px 60px rgba(0,0,0,.24);
+        -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px);
       }
-      .rl7-title {font-size:18px;font-weight:750;margin-bottom:4px;color:#fff!important}
-      .rl7-sub {font-size:12px;color:rgba(255,255,255,.72)!important;opacity:1;margin-bottom:14px;line-height:1.5}
-      .rl7-label {font-size:13px;font-weight:700;margin:14px 0 7px;color:rgba(255,255,255,.88)!important}
+      .rl7-title {font-size:18px;font-weight:750;margin-bottom:4px}
+      .rl7-sub {font-size:12px;opacity:.62;margin-bottom:14px;line-height:1.5}
+      .rl7-label {font-size:13px;font-weight:700;margin:14px 0 7px}
       .rl7-textarea {
         width:100%; min-height:160px; resize:vertical; box-sizing:border-box;
-        border:1px solid rgba(255,255,255,.20); border-radius:16px;
-        padding:12px; background:rgba(12,14,18,.42) !important;
-        color:#fff !important; -webkit-text-fill-color:#fff !important;
-        caret-color:#fff!important;
+        border:1px solid rgba(40,80,60,.16); border-radius:14px;
+        padding:12px; background:rgba(255,255,255,.86);
+        color:#26342f !important; -webkit-text-fill-color:#26342f !important;
         font:inherit; font-size:16px !important; outline:none;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
-        -webkit-backdrop-filter:blur(18px) saturate(130%);
-        backdrop-filter:blur(18px) saturate(130%);
       }
-      .rl7-textarea::placeholder{color:rgba(255,255,255,.42)!important;-webkit-text-fill-color:rgba(255,255,255,.42)!important}
       .rl7-actions{display:flex;gap:10px;margin-top:14px}
-      .rl7-actions button{flex:1;border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px;font-weight:700}
-      .rl7-secondary{background:rgba(255,255,255,.08)!important;color:rgba(255,255,255,.90)!important}
-      .rl7-primary{background:rgba(255,255,255,.18)!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
-      .rl7-link{border:0;background:transparent;color:rgba(255,255,255,.78)!important;text-decoration:underline;font-size:12px;padding:3px 0 10px}
+      .rl7-actions button{flex:1;border:0;border-radius:14px;padding:12px;font-weight:700}
+      .rl7-secondary{background:rgba(80,100,90,.10);color:#365749}
+      .rl7-primary{background:#8bcdb0;color:#15392b}
+      .rl7-link{border:0;background:transparent;color:#477a65;text-decoration:underline;font-size:12px;padding:3px 0 10px}
 
       /* whereabouts pools */
       .rl7-wa-wrap{padding:4px 2px 20px}
@@ -490,27 +476,11 @@
   function pats(){try{return Storage.getPats?Storage.getPats():[];}catch(_){return[];}}
   function savePats(list){try{if(Storage.setPats)Storage.setPats(list);}catch(_){}}
   function partnerName(){
-    try{
-      var id=chatId();
-      if(id && id.indexOf('partner_')===0 && Storage.getPartnerProfiles){
-        var raw=id.slice('partner_'.length), ps=Storage.getPartnerProfiles()||[];
-        for(var i=0;i<ps.length;i++){
-          var pid=String(ps[i].id||'');
-          if(pid===raw || pid===id || ('partner_'+pid)===id){
-            return ps[i].nickname||ps[i].name||ps[i].avatar||'对方';
-          }
-        }
-      }
-    }catch(_){}
-    try{if(typeof _getCurrentPartnerName==='function'){var n=_getCurrentPartnerName();if(n&&n!=='对方')return n;}}catch(_){}
-    try{
-      var ps2=Storage.getPartnerProfiles?Storage.getPartnerProfiles():[];
-      if(ps2.length===1)return ps2[0].nickname||ps2[0].name||'对方';
-    }catch(_){}
+    try{if(typeof _getCurrentPartnerName==='function'){var n=_getCurrentPartnerName();if(n)return n;}}catch(_){}
     return '对方';
   }
   function selfName(){
-    try{var p=Storage.getMyProfile();return(p&&(p.nickname||p.name))||'我';}catch(_){return'我';}
+    try{var p=Storage.getMyProfile();return(p&&p.nickname)||'我';}catch(_){return'我';}
   }
   function chatId(){
     try{if(typeof _currentChatId==='function')return _currentChatId()||'';}catch(_){}
@@ -564,7 +534,7 @@
     if(!phrases.length)phrases=['pokes your cheek','boops your nose','ruffles your hair','tugs your sleeve'];
     var actor=mode==='other'?partnerName():selfName();
     var x=sheet('<div class="rl7-title">'+esc(actor)+' · 拍一拍</div>'+
-      '<div class="rl7-sub">选择一条拍一拍。发送时会自动使用 '+esc(actor)+' 的真实设置名称。</div>'+
+      '<div class="rl7-sub">格式：'+esc(actor)+' + 词条（不加括号）</div>'+
       '<button class="rl7-link" id="rl7-pat-edit">批量编辑词库</button>'+
       '<div class="rl7-chip-grid">'+phrases.map(function(q,i){return'<button class="rl7-chip-btn" data-i="'+i+'">'+esc(q)+'</button>';}).join('')+'</div>'+
       '<div class="rl7-actions"><button class="rl7-secondary" id="rl7-pat-cancel">取消</button></div>');
@@ -621,7 +591,7 @@
   function openBulkAddPat(){
     var x=sheet(
       '<div class="rl7-title">批量添加拍一拍</div>'+
-      '<div class="rl7-sub">一行一个拍一拍动作，可以一次粘贴很多条。保存后列表只显示这一行内容。</div>'+
+      '<div class="rl7-sub">只需要填写对方动作。一行一个，可以一次粘贴很多条。不会再要求“我方动作”，也不会再拼接“：想你了”。</div>'+
       '<textarea class="rl7-textarea" id="rl7-pat-add-lines" placeholder="pokes your cheek\nboops your nose\nruffles your hair"></textarea>'+
       '<div class="rl7-actions"><button class="rl7-secondary" id="rl7-pat-add-cancel">取消</button><button class="rl7-primary" id="rl7-pat-add-save">批量添加</button></div>'
     );
