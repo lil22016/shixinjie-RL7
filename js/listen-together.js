@@ -279,6 +279,12 @@
   function setServiceText(text, cls) {
     var el = $('lt-service-text');
     if (el) { el.textContent = text; el.className = ''; if (cls) el.classList.add('lt-svc-' + cls); }
+    var playerStatus = $('lt-player-status'), playerText = $('lt-player-status-text');
+    if (playerStatus && playerText) {
+      playerText.textContent = text;
+      playerStatus.style.display = '';
+      playerStatus.classList.toggle('lt-player-status-warn', cls === 'warn');
+    }
     var act = $('lt-service-actions');
     if (act) act.innerHTML = '';
     if (cls === 'warn') {
@@ -641,6 +647,12 @@
       LT.audio.addEventListener('pause', function () { LT.playing = false; renderPlayBtn(); });
       LT.audio.addEventListener('ended', function () { onEnded(); });
       LT.audio.addEventListener('error', function () {
+        if (LT.queue[LT.index] && LT.queue[LT.index].auth) {
+          var code=LT.audio.error && LT.audio.error.code;
+          setServiceText('播放器无法加载音源（媒体错误 '+(code || '未知')+'）。请把这条提示发给我。','warn');
+          renderPlayBtn();
+          return;
+        }
         setServiceText('播放出错，可能该歌曲需登录或已失效，自动换下一首', 'warn');
         // 静默切歌：报错自动跳过属于"被动切换"，
         // 不触发 ltNext 默认的"切歌默契"类聊天回复（避免因 VIP 直链失效而刷屏）
@@ -671,11 +683,28 @@
     renderPlayerInfo(song);
     renderMiniBar();
     var audio = getAudio();
+    // Do not let the play button keep playing the previous song while a new URL loads.
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
     if (song && song.auth && LT.authReady) {
+      setServiceText('正在获取「'+song.name+'」的播放地址…');
       authRequest('/song/url?id='+encodeURIComponent(song.id)).then(function(d) {
-        if(!d.url) throw new Error('该歌曲暂无可播放地址或账号无权限');
-        audio.src=d.url; return audio.play();
-      }).catch(function(e){setServiceText('播放失败：'+e.message,'warn');});
+        if(LT.queue[LT.index]!==song) return;
+        // The public URL is only a fallback for songs marked free in the playlist.
+        var url=d.url || (Number(song.fee)===0 ? _outerUrl(song.id) : '');
+        if(!url) {
+          var info=(d.attempts||[]).map(function(a){return a.endpoint+': '+(a.error||('code='+a.code+', item='+a.itemCode+', fee='+a.fee));}).join('；');
+          setServiceText('网易云未返回播放地址。'+info+'。可尝试别的歌曲；请将这段信息发给我。','warn'); return;
+        }
+        audio.src=url;
+        audio.load();
+        var attempt=audio.play();
+        if(attempt && attempt.catch) attempt.catch(function() {
+          setServiceText('播放地址已取得。请点击播放器中央的播放按钮；若仍失败，请告诉我具体提示。','warn');
+          renderPlayBtn();
+        });
+      }).catch(function(e){if(LT.queue[LT.index]===song) setServiceText('获取播放地址失败：'+e.message,'warn');});
     } else if (song && song.url) {
       // 直连模式：歌曲自带可播放地址，无需本地服务（GitHub 部署同样可用）
       audio.src = song.url;
@@ -710,7 +739,10 @@
 
   window.ltTogglePlay = function () {
     var audio = getAudio();
-    if (!audio.src) { setServiceText('请先从歌单选一首歌播放', 'warn'); return; }
+    if (!audio.src) {
+      if (LT.index >= 0 && LT.queue[LT.index]) { ltPlay(LT.index); return; }
+      setServiceText('请先从歌单选一首歌播放', 'warn'); return;
+    }
     var wasPlaying = !audio.paused;
     if (wasPlaying) {
       audio.pause();
