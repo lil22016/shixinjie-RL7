@@ -48,7 +48,7 @@
 <link rel="stylesheet" href="css/pages-redpacket.css?v=20260829f">
 <link rel="stylesheet" href="css/bubble-maker.css?v=20260829f">
 <link rel="stylesheet" href="css/rl7-v79-bubble-shop-liquid.css?v=20260919v79">
-<link rel="stylesheet" href="css/pages-listen.css?v=20260929play4">
+<link rel="stylesheet" href="css/pages-listen.css?v=20260929music5">
 <link rel="stylesheet" href="css/pages-account.css?v=20260902c">
 <link rel="stylesheet" href="css/rl7-companion-home-v1.css?v=20260916icon64">
 
@@ -578,16 +578,24 @@
               <button id="lt-mode-shuffle" onclick="ltSetMode('shuffle')" title="随机播放"><i class="fas fa-random"></i></button>
             </div>
           </div>
-          <div class="lt-together">
-            <label class="lt-together-switch">
-              <span>和 TA 一起听</span>
-              <input type="checkbox" id="lt-together-check" onchange="ltToggleTogether()">
-              <span class="lt-switch-slider"></span>
-            </label>
-            <div class="lt-together-tip">开启后，对方会跟着一起听，中途还会主动切歌、暂停或点评</div>
+          <div class="lt-session">
+            <div class="lt-session-head"><button onclick="ltToggleLog()" id="lt-log-toggle">本次听歌记录 ▾</button><button onclick="ltClearLog()">清空</button></div>
+            <div id="lt-session-log" class="lt-session-log" aria-live="polite"></div>
+            <div class="lt-rating"><button id="lt-rate-like" onclick="ltRateSong('like')">♡ 我喜欢</button><button id="lt-rate-dislike" onclick="ltRateSong('dislike')">✕ 我不喜欢</button></div>
+            <div id="lt-rating-state" class="lt-rating-state"></div>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="lt-float" class="lt-float" style="display:none" aria-label="音乐悬浮控制">
+    <button id="lt-float-main" class="lt-float-main" onclick="ltFloatToggle()" aria-label="展开音乐控制"><i class="fas fa-music"></i></button>
+    <div id="lt-float-actions" class="lt-float-actions" style="display:none">
+      <button onclick="ltPrev()" aria-label="上一首"><i class="fas fa-backward-step"></i></button>
+      <button onclick="ltTogglePlay()" id="lt-float-play" aria-label="播放或暂停"><i class="fas fa-pause"></i></button>
+      <button onclick="ltNext()" aria-label="下一首"><i class="fas fa-forward-step"></i></button>
+      <button onclick="ltStopMusic()" aria-label="关闭音乐"><i class="fas fa-xmark"></i></button>
     </div>
   </div>
 
@@ -766,6 +774,23 @@
         </div>
         <i class="fas fa-chevron-right discover-arrow"></i>
       </div>
+      <div class="list-divider"></div>
+      <div class="discover-item" onclick="Navigation.navigateTo('wordcard-music');ltRenderCards()">
+        <div class="discover-icon"><i class="fas fa-music"></i></div>
+        <div class="discover-info"><div class="discover-title">听歌字卡</div><div class="discover-desc">按情境批量编辑一起听歌时的回应</div></div>
+        <i class="fas fa-chevron-right discover-arrow"></i>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-wordcard-music" class="page">
+    <div class="top-nav"><div class="back-btn" onclick="Navigation.goBack()"><i class="fas fa-chevron-left"></i></div><div class="nav-title">听歌字卡</div></div>
+    <div class="lt-card-editor">
+      <label for="lt-card-category">情境分类</label><select id="lt-card-category" onchange="ltRenderCards()"></select>
+      <p>每行一句。可以批量粘贴、修改或删除；保存后替换该分类的全部内容。</p>
+      <textarea id="lt-card-lines" rows="13" placeholder="每行一句话"></textarea>
+      <button type="button" onclick="ltSaveCards()">保存这一类</button>
+      <span id="lt-card-save-status" role="status"></span>
     </div>
   </div>
 
@@ -2251,7 +2276,7 @@
 <script src="js/love-apps.js?v=20260901e"></script>
 <script src="js/bookshelf.js?v=20260901p"></script>
 <script src="js/mini-games.js?v=20260902a"></script>
-<script src="js/listen-together.js?v=20260929-play4"></script>
+<script src="js/listen-together.js?v=20260929-music5"></script>
 <script src="js/partner-freewill.js?v=20260902f"></script>
 <script src="js/account.js?v=20260902a"></script>
 

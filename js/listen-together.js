@@ -36,7 +36,7 @@
     index: -1,
     mode: 'sequential',   // 'sequential' | 'loop' | 'shuffle'
     _curPlaylistId: null, // 当前队列所属歌单 id（用于记忆上次播放位置）
-    together: false,
+    together: true,
     playing: false,
     serviceOk: false,
     srcMode: 'unknown',   // 数据源：'local' 本地音乐服务 | 'online' 在线兜底（GitHub 静态部署无需任何后台）
@@ -49,6 +49,9 @@
     _lastAction: '',
     _opening: false,
     searchList: [],
+    log: [],
+    sessionStarted: false,
+    loggedTrack: '',
   };
 
   /* ---------- 通用工具 ---------- */
@@ -107,20 +110,17 @@
     ltRenderPlaylists();
     ltInitAuth();
     renderMiniBar();
-    _renderTogetherSwitch();
+    renderLog();
     _syncVolumeUI();
     renderModeBtn();
     _detectService();
-    if (!LT._chatId) {
-      setServiceText('请先进入聊天室，才能和 TA 一起听', 'warn');
-    }
   };
 
   window.closeListenTogetherPanel = function () {
     var ov = $('listen-together-overlay');
     if (ov) ov.style.display = 'none';
     LT._opening = false;
-    if (!LT.together) _stopTalkScheduler();
+    renderFloat();
   };
 
   /* ---------- 在线兜底（数据源 = 公共在线接口，GitHub 部署 / 未启动本地服务时自动启用） ---------- */
@@ -636,6 +636,10 @@
   function getAudio() {
     if (!LT.audio) {
       LT.audio = new Audio();
+      LT.audio.id = 'lt-music-audio';
+      LT.audio.setAttribute('playsinline', '');
+      LT.audio.style.display = 'none';
+      document.body.appendChild(LT.audio);
       LT.audio.preload = 'auto';
       _syncVolumeUI();
       LT.audio.addEventListener('timeupdate', function () { updateProgress(false); });
@@ -643,10 +647,25 @@
         var d = $('lt-dur-time');
         if (d && isFinite(LT.audio.duration)) d.textContent = fmtTime(LT.audio.duration);
       });
-      LT.audio.addEventListener('play', function () { LT.playing = true; renderPlayBtn(); });
-      LT.audio.addEventListener('pause', function () { LT.playing = false; renderPlayBtn(); });
+      LT.audio.addEventListener('play', function () {
+        LT.playing = true; window.__musicPlaying = true;
+        if (!LT.sessionStarted) { LT.sessionStarted = true; _partnerSay(_musicLine('open', OPEN_TEXTS), true, '邀请'); }
+        var current=LT.queue[LT.index];
+        if(current && LT.loggedTrack!==String(current.id)) { LT.loggedTrack=String(current.id); addLog('开始播放「'+current.name+'」'); }
+        _scheduleTalk(); updateMediaSession(); renderPlayBtn(); renderFloat();
+      });
+      LT.audio.addEventListener('pause', function () { LT.playing = false; window.__musicPlaying = false; renderPlayBtn(); renderFloat(); updateMediaSession(); });
       LT.audio.addEventListener('ended', function () { onEnded(); });
+      if (navigator.mediaSession) {
+        try {
+          navigator.mediaSession.setActionHandler('play', function () { if(LT.audio && LT.audio.paused) window.ltTogglePlay(); });
+          navigator.mediaSession.setActionHandler('pause', function () { if(LT.audio && !LT.audio.paused) window.ltTogglePlay(); });
+          navigator.mediaSession.setActionHandler('previoustrack', function () { window.ltPrev(); });
+          navigator.mediaSession.setActionHandler('nexttrack', function () { window.ltNext(); });
+        } catch (e) {}
+      }
       LT.audio.addEventListener('error', function () {
+        if (!LT.audio.getAttribute('src')) return;
         if (LT.queue[LT.index] && LT.queue[LT.index].auth) {
           var code=LT.audio.error && LT.audio.error.code;
           setServiceText('播放器无法加载音源（媒体错误 '+(code || '未知')+'）。请把这条提示发给我。','warn');
@@ -681,7 +700,9 @@
     var song = LT.queue[idx];
     renderQueue();
     renderPlayerInfo(song);
+    renderRatings();
     renderMiniBar();
+    renderFloat();
     var audio = getAudio();
     // Do not let the play button keep playing the previous song while a new URL loads.
     audio.pause();
@@ -747,7 +768,7 @@
     if (wasPlaying) {
       audio.pause();
       if (LT.together && Math.random() < 0.22) {
-        _partnerSay(pick(USER_PAUSE_TEXTS), true);
+        _partnerSay(_musicLine('userPause', USER_PAUSE_TEXTS), true, '暂停');
       }
     } else {
       var p = audio.play();
@@ -758,14 +779,14 @@
 
   window.ltPrev = function () {
     if (!LT.queue.length) return;
-    if (LT.together && Math.random() < 0.25) _partnerSay(pick(USER_SKIP_TEXTS), true);
+    if (LT.together && Math.random() < 0.25) _partnerSay(_musicLine('userSkip', USER_SKIP_TEXTS), true, '切歌');
     ltPlay(LT.index - 1);
   };
 
   window.ltNext = function (silent) {
     if (!LT.queue.length) return;
     // silent=true（播放报错自动切换等被动场景）：不触发"切歌默契"类聊天回复
-    if (!silent && LT.together && Math.random() < 0.25) _partnerSay(pick(USER_SKIP_TEXTS), true);
+    if (!silent && LT.together && Math.random() < 0.25) _partnerSay(_musicLine('userSkip', USER_SKIP_TEXTS), true, '切歌');
     if (LT.mode === 'shuffle' && LT.queue.length > 1) {
       var nxt = LT.index;
       while (nxt === LT.index) nxt = Math.floor(Math.random() * LT.queue.length);
@@ -826,10 +847,11 @@
       // 顺延播放：按顺序，最后一首播完自动停止
       if (LT.index >= LT.queue.length - 1) {
         LT.playing = false;
+        _stopTalkScheduler();
         renderPlayBtn();
         return;
       }
-      if (LT.together) _partnerSay(pick(AUTO_NEXT_TEXTS));
+      if (LT.together) _partnerSay(_musicLine('autoNext', AUTO_NEXT_TEXTS), false, '下一首');
       ltPlay(LT.index + 1);
       return;
     }
@@ -838,12 +860,12 @@
       if (LT.queue.length > 1) {
         while (nxt === LT.index) nxt = Math.floor(Math.random() * LT.queue.length);
       }
-      if (LT.together) _partnerSay(pick(AUTO_NEXT_TEXTS));
+      if (LT.together) _partnerSay(_musicLine('autoNext', AUTO_NEXT_TEXTS), false, '下一首');
       ltPlay(nxt);
       return;
     }
     // loop：循环播放，最后一首自动回第一首（ltPlay 内部会自动回绕）
-    if (LT.together) _partnerSay(pick(AUTO_NEXT_TEXTS));
+    if (LT.together) _partnerSay(_musicLine('autoNext', AUTO_NEXT_TEXTS), false, '下一首');
     ltPlay(LT.index + 1);
   }
 
@@ -866,6 +888,8 @@
     if (btn) btn.innerHTML = '<i class="fas fa-' + (LT.playing ? 'pause' : 'play') + '"></i>';
     var mini = $('lt-mini-play');
     if (mini) mini.innerHTML = '<i class="fas fa-' + (LT.playing ? 'pause' : 'play') + '"></i>';
+    var floatBtn = $('lt-float-play');
+    if (floatBtn) floatBtn.innerHTML = '<i class="fas fa-' + (LT.playing ? 'pause' : 'play') + '"></i>';
   }
 
   function renderPlayerInfo(song) {
@@ -901,38 +925,12 @@
   }
 
   /* ---------- 一起听（角色互动） ---------- */
-  window.ltToggleTogether = function () {
-    var chk = $('lt-together-check');
-    LT.together = !!(chk && chk.checked);
-    _renderTogetherSwitch();
-    if (LT.together) {
-      if (!LT._chatId) {
-        setServiceText('请先进入聊天室，才能和 TA 一起听', 'warn');
-        chk.checked = false;
-        LT.together = false;
-        _renderTogetherSwitch();
-        return;
-      }
-      _partnerSay(pick(OPEN_TEXTS));
-      _scheduleTalk();
-      setServiceText('已开启一起听：对方会跟着播放，并可能中途切歌 / 暂停 / 点评');
-    } else {
-      _stopTalkScheduler();
-      setServiceText('已关闭一起听');
-    }
-  };
-
-  function _renderTogetherSwitch() {
-    var chk = $('lt-together-check');
-    if (chk) chk.checked = LT.together;
-  }
-
   function _scheduleTalk() {
     if (LT._talkTimer) clearTimeout(LT._talkTimer);
-    if (!LT.together || !LT.playing) { LT._talkTimer = null; return; }
+    if (!LT.queue.length || !LT.sessionStarted) { LT._talkTimer = null; return; }
     var delay = 45 + Math.random() * 65; // 45~110 秒
     LT._talkTimer = setTimeout(function () {
-      if (!LT.together || !LT.playing) { _scheduleTalk(); return; }
+      if (!LT.queue.length || !LT.sessionStarted) { _scheduleTalk(); return; }
       _partnerAction();
       _scheduleTalk();
     }, delay * 1000);
@@ -952,7 +950,8 @@
       // 暂停（需正在播放）
       if (LT.audio && !LT.audio.paused && LT.audio.src) {
         LT._lastAction = 'pause';
-        _partnerSay(pick(PAUSE_TEXTS));
+        addLog('TA 暂停了播放');
+        _partnerSay(_musicLine('pause', PAUSE_TEXTS), false, 'TA 暂停');
         LT.audio.pause(); LT.playing = false; renderPlayBtn();
         return;
       }
@@ -960,7 +959,8 @@
       // 切歌（需歌单多于 1 首）
       if (LT.queue.length > 1) {
         LT._lastAction = 'skip';
-        _partnerSay(pick(SKIP_TEXTS));
+        addLog('TA 切到了下一首');
+        _partnerSay(_musicLine('skip', SKIP_TEXTS), false, 'TA 切歌');
         var audio = LT.audio;
         if (audio && audio.src) {
           var nxt = (LT.index + 1 >= LT.queue.length) ? 0 : LT.index + 1;
@@ -973,49 +973,32 @@
       var audio2 = LT.audio;
       if (audio2 && audio2.paused && audio2.src) {
         LT._lastAction = 'resume';
-        _partnerSay(pick(RESUME_TEXTS));
+        addLog('TA 继续播放');
+        _partnerSay(_musicLine('resume', RESUME_TEXTS), false, 'TA 继续播放');
         var p = audio2.play();
-        if (p && p.catch) p.catch(function () {});
-        LT.playing = true; renderPlayBtn();
+        if (p && p.catch) p.catch(function () { setServiceText('手机锁屏后需要手动点击播放继续', 'warn'); });
         return;
       }
     } else {
       // 点评（无前置条件）
-      LT._lastAction = 'praise';
-      _partnerSay(pick(PRAISE_TEXTS));
+      LT._lastAction = Math.random() < 0.78 ? 'praise' : 'dislike';
+      saveRating('partner',LT._lastAction === 'praise' ? 'like' : 'dislike');
+      addLog('TA '+(LT._lastAction === 'praise' ? '喜欢' : '踩了')+'「'+(LT.queue[LT.index]?.name||'当前歌曲')+'」');
+      _partnerSay(LT._lastAction === 'praise' ? _musicLine('praise', PRAISE_TEXTS) : _musicLine('dislike', DISLIKE_TEXTS), false, LT._lastAction === 'praise' ? 'TA 喜欢这首' : 'TA 踩了这首');
       return;
     }
     // 动作前置不满足 → 静默不发，同样保持低频
     LT._lastAction = 'idle';
   }
 
-  /* ---------- 聊天注入（对方发言） ---------- */
+  /* ---------- 本次听歌记录（不写入聊天消息） ---------- */
   var _lastSayAt = 0;
-  function _partnerSay(text, force) {
-    if (!LT._chatId) return;
+  function _partnerSay(text, force, label) {
+    if (!text) return;
     var now = Date.now();
-    if (!force && now - _lastSayAt < 6000) return; // 消息冷却，避免刷屏
+    if (!force && now - _lastSayAt < 6000) return;
     _lastSayAt = now;
-    try {
-      var chatId = String(LT._chatId);
-      var msgs = Storage.getMessages(chatId) || [];
-      var newMsg = {
-        id: Date.now() + Math.floor(Math.random() * 100),
-        type: 'other',
-        text: text,
-        time: Date.now(),
-        msgType: 'text'
-      };
-      msgs.push(newMsg);
-      Storage.setMessages(chatId, msgs);
-      if (typeof updateLastMsg === 'function') updateLastMsg(chatId, text);
-      if (typeof _safeAppendMessage === 'function') _safeAppendMessage(chatId, newMsg);
-      else if (typeof appendMessage === 'function') appendMessage(chatId, newMsg);
-      if (typeof App !== 'undefined' && App.playSound) { try { App.playSound('receive'); } catch (e) {} }
-      if (typeof showBackgroundPush === 'function') { try { showBackgroundPush(text); } catch (e) {} }
-    } catch (e) {
-      // 注入失败不影响音乐播放
-    }
+    addLog((label || 'TA') + '：' + text);
   }
 
   /* ---------- 语料 ---------- */
@@ -1069,6 +1052,91 @@
     '自动续上啦，继续听',
     '下一首，我猜你也会喜欢',
   ];
+  var DISLIKE_TEXTS = ['这首似乎不太合我心意。', '我想听点别的，可以换一首吗？'];
+  var RATE_TEXTS = ['你喜欢的话，我会再陪你听一遍。', '好，我记住你喜欢这首了。'];
+  var RATE_DISLIKE_TEXTS = ['那我们换一首，听你喜欢的。', '好，这首先跳过。'];
+  var CARD_TYPES = [
+    ['open','听歌邀请',OPEN_TEXTS], ['praise','TA 喜欢',PRAISE_TEXTS],
+    ['dislike','TA 不喜欢',DISLIKE_TEXTS], ['skip','TA 切歌',SKIP_TEXTS],
+    ['pause','TA 暂停',PAUSE_TEXTS], ['resume','TA 继续',RESUME_TEXTS],
+    ['userPause','你暂停',USER_PAUSE_TEXTS], ['userSkip','你切歌',USER_SKIP_TEXTS],
+    ['autoNext','自动下一首',AUTO_NEXT_TEXTS], ['userLike','你点赞',RATE_TEXTS],
+    ['userDislike','你点踩',RATE_DISLIKE_TEXTS]
+  ];
+  function musicCards() {
+    try { return JSON.parse(localStorage.getItem('lt_music_cards') || '{}') || {}; } catch (e) { return {}; }
+  }
+  function _musicLine(key, fallback) {
+    var saved = musicCards(), lines = Object.prototype.hasOwnProperty.call(saved,key) ? saved[key] : fallback;
+    return Array.isArray(lines) && lines.length ? pick(lines) : '';
+  }
+  window.ltRenderCards = function () {
+    var select = $('lt-card-category'), input = $('lt-card-lines'); if (!select || !input) return;
+    var current=select.value;
+    select.innerHTML=CARD_TYPES.map(function(t){return '<option value="'+t[0]+'">'+t[1]+'</option>';}).join('');
+    if(current) select.value=current;
+    var t=CARD_TYPES.find(function(c){return c[0]===select.value;}) || CARD_TYPES[0];
+    var saved=musicCards(); input.value=(Object.prototype.hasOwnProperty.call(saved,t[0]) ? saved[t[0]] : t[2]).join('\n');
+    if($('lt-card-save-status')) $('lt-card-save-status').textContent='';
+  };
+  window.ltSaveCards = function () {
+    var select=$('lt-card-category'), input=$('lt-card-lines'); if(!select || !input) return;
+    var data=musicCards(); data[select.value]=input.value.split(/\r?\n/).map(function(s){return s.trim();}).filter(Boolean);
+    try { localStorage.setItem('lt_music_cards',JSON.stringify(data)); $('lt-card-save-status').textContent='已保存 '+data[select.value].length+' 条'; }
+    catch(e){$('lt-card-save-status').textContent='保存失败：浏览器存储空间不足';}
+  };
+  function addLog(text) { if(!text)return; LT.log.push({time:Date.now(),text:text}); renderLog(); }
+  function renderLog() {
+    var el=$('lt-session-log'); if(!el)return;
+    el.innerHTML=LT.log.length ? LT.log.map(function(item){return '<p><small>'+new Date(item.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</small> '+esc(item.text)+'</p>';}).join('') : '<p>这次还没有记录</p>';
+    el.scrollTop=el.scrollHeight;
+  }
+  window.ltToggleLog=function(){var el=$('lt-session-log');if(!el)return;el.hidden=!el.hidden;$('lt-log-toggle').textContent='本次听歌记录 '+(el.hidden?'▸':'▾');};
+  window.ltClearLog=function(){LT.log=[];renderLog();};
+  function ratings(){try{return JSON.parse(localStorage.getItem('lt_song_ratings')||'{}')||{};}catch(e){return {};}}
+  function saveRating(who,kind){
+    var song=LT.queue[LT.index];if(!song || !song.id)return;
+    var data=ratings(),id=String(song.id);data[id]=data[id]||{};data[id][who]=kind;
+    try{localStorage.setItem('lt_song_ratings',JSON.stringify(data));}catch(e){}
+    renderRatings();
+  }
+  function renderRatings(){
+    var song=LT.queue[LT.index],item=song&&ratings()[String(song.id)]||{};
+    if($('lt-rate-like'))$('lt-rate-like').classList.toggle('active',item.user==='like');
+    if($('lt-rate-dislike'))$('lt-rate-dislike').classList.toggle('active',item.user==='dislike');
+    if($('lt-rating-state'))$('lt-rating-state').textContent=item.partner ? 'TA '+(item.partner==='like'?'喜欢':'不喜欢')+'这首歌' : '';
+  }
+  window.ltRateSong=function(kind){
+    var song=LT.queue[LT.index];if(!song)return;
+    saveRating('user',kind);
+    addLog('你'+(kind==='like'?'喜欢':'踩了')+'「'+song.name+'」');
+    _partnerSay(_musicLine(kind==='like'?'userLike':'userDislike',kind==='like'?RATE_TEXTS:RATE_DISLIKE_TEXTS),true,'TA 回应');
+  };
+  function updateMediaSession(){
+    if(!navigator.mediaSession)return;
+    var song=LT.queue[LT.index];
+    try {
+      navigator.mediaSession.playbackState=!song?'none':LT.playing?'playing':'paused';
+      if(song && window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:song.name||'一起听歌',artist:song.artist||'',album:'拾心界',artwork:song.cover?[{src:safeCover(song.cover)}]:[]});
+    }catch(e){}
+  }
+  function renderFloat(){var el=$('lt-float');if(el)el.style.display=LT.sessionStarted?'flex':'none';}
+  window.ltFloatToggle=function(){var el=$('lt-float-actions');if(el)el.style.display=el.style.display==='none'?'flex':'none';};
+  window.ltStopMusic=function(){
+    _stopTalkScheduler(); LT.sessionStarted=false;LT.queue=[];LT.index=-1;LT.loggedTrack='';LT.playing=false;window.__musicPlaying=false;LT.log=[];renderLog();
+    if(LT.audio){LT.audio.pause();LT.audio.removeAttribute('src');LT.audio.load();}
+    if(navigator.mediaSession){try{navigator.mediaSession.playbackState='none';navigator.mediaSession.metadata=null;}catch(e){}}
+    renderFloat();renderMiniBar();renderPlayBtn();closeListenTogetherPanel();
+  };
+  function initFloatDrag(){
+    var el=$('lt-float'),handle=$('lt-float-main');if(!el||!handle)return;
+    var sx,sy,ox,oy,moved=false;
+    handle.addEventListener('pointerdown',function(e){sx=e.clientX;sy=e.clientY;var r=el.getBoundingClientRect();ox=r.left;oy=r.top;moved=false;handle.setPointerCapture(e.pointerId);});
+    handle.addEventListener('pointermove',function(e){if(sx===undefined)return;var dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;if(!moved)return;el.style.left=Math.max(0,Math.min(innerWidth-el.offsetWidth,ox+dx))+'px';el.style.top=Math.max(0,Math.min(innerHeight-el.offsetHeight,oy+dy))+'px';el.style.right='auto';el.style.bottom='auto';});
+    handle.addEventListener('pointerup',function(){sx=undefined;});
+    handle.addEventListener('click',function(e){if(moved){e.stopImmediatePropagation();e.preventDefault();moved=false;}},true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initFloatDrag);else initFloatDrag();
 
   /* ---------- 搜索 ---------- */
   window.ltSearch = function () {

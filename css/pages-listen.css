@@ -112,6 +112,22 @@ html.liquid-theme .lt-panel {
 .lt-player-status { flex-shrink: 0; background: #30353e; color: #fff; line-height: 1.4; overflow-wrap: anywhere; }
 .lt-player-status-warn { background: #49393b; color: #fff; }
 .lt-player-status span { min-width: 0; }
+.lt-session { margin: 20px 16px 30px; padding: 14px; border-top: 1px solid rgba(255,255,255,.28); color: #fff; }
+.lt-session-head,.lt-rating { display: flex; justify-content: space-between; gap: 8px; }
+.lt-session button,.lt-card-editor button { border: 1px solid rgba(255,255,255,.25); border-radius: 16px; padding: 9px 12px; background: #343a45; color: #fff; }
+.lt-session-log { max-height: 170px; overflow-y: auto; font-size: 14px; line-height: 1.5; margin: 12px 0; }
+.lt-session-log p { margin: 5px 0; padding: 6px 9px; background: rgba(255,255,255,.08); border-radius: 9px; overflow-wrap: anywhere; }
+.lt-rating { justify-content: flex-start; }
+.lt-rating button.active { background: #7a6072; border-color: #e3b6d0; }
+.lt-rating-state { font-size: 12px; opacity: .8; margin-top: 8px; }
+.lt-float { position: fixed; right: 18px; bottom: 104px; z-index: 10040; touch-action: none; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.lt-float-main { width: 58px; height: 58px; border-radius: 50%; border: 2px solid #fff; color: white; background: #343a45; box-shadow: 0 6px 25px #0008; font-size: 20px; }
+.lt-float-actions { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 25px; background: #30353e; box-shadow: 0 6px 25px #0008; }
+.lt-float-actions button { border: 0; border-radius: 50%; width: 39px; height: 39px; background: #505662; color: #fff; }
+.lt-card-editor { padding: 20px; display: flex; flex-direction: column; gap: 12px; color: #fff; }
+.lt-card-editor select,.lt-card-editor textarea { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #737987; color: #fff; background: #30353e; font: inherit; }
+.lt-card-editor p { font-size: 13px; opacity: .8; }
+.lt-player { justify-content: flex-start; }
 .lt-service-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .lt-link-btn {
   border: none;
