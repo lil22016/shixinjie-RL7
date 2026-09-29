@@ -6,10 +6,10 @@
    ============================================================ */
 
 .lt-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 430;
-  /* 纯色跟随网站主题（不再使用毛玻璃模糊） */
+  /* 独立页面必须有实体背景。Liquid Glass 的 --bg-main 会变成 transparent。 */
   background: var(--bg-main, #F0F4F8);
   display: flex;
   align-items: center;
@@ -22,7 +22,7 @@
   width: 100%;
   max-width: 560px;
   height: min(84vh, 640px);
-  background: var(--bg-card, #fff);
+  background: var(--panel-light, #F4F8FB);
   border: 1px solid var(--border-light, rgba(255,255,255,0.65));
   border-radius: var(--radius-xl, 20px);
   box-shadow: var(--shadow-lg, 0 8px 32px rgba(160,170,190,0.10));
@@ -30,6 +30,14 @@
   display: flex;
   flex-direction: column;
   animation: ltPanelIn 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Liquid Glass 会将 --bg-main 与 --bg-card 设为透明；单独给音乐页不透明画布。 */
+html.liquid-theme .lt-overlay {
+  background: #171a20 !important;
+}
+html.liquid-theme .lt-panel {
+  background: #20242c !important;
 }
 
 @keyframes ltPanelIn {
