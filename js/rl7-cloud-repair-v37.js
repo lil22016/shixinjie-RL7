@@ -13,7 +13,7 @@ async function reconcileMessages(){
  for(let r of rows){
    if(!r||!r.chatId||String(r.chatId).startsWith('__meta_')||!Array.isArray(r.messages))continue;
    let id=r.chatId,local=(window.Storage&&Storage._msgCache&&Storage._msgCache['msg_'+id])||[];
-   let merged=mergeMsgs(local,r.messages);
+   let merged=window.Storage&&Storage._mergeMessages?Storage._mergeMessages(local,r.messages):mergeMsgs(local,r.messages);
    if(window.Storage){Storage._msgCache['msg_'+id]=merged;Storage._msgUpdatedAt['msg_'+id]=Date.now();try{Storage._scheduleMessagesMirror(id)}catch(e){}}
    await MessageDB.set(id,merged);
  }

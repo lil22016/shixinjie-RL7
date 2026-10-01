@@ -886,7 +886,7 @@ const Storage = {
     var fromLS = this.get(cacheKey, null);
     if (fromLS !== null && Array.isArray(fromLS)) {
       this._msgCache[cacheKey] = fromLS;
-      this._msgUpdatedAt[cacheKey] = 0;
+      this._msgUpdatedAt[cacheKey] = parseInt(localStorage.getItem(this.PREFIX + '__ts_' + cacheKey) || '0', 10) || 0;
       this._restoreFromIDB(chatId);
       return fromLS;
     }
@@ -906,8 +906,21 @@ const Storage = {
         var m = arr[i];
         if (!m) continue;
         var key = m.id || ('t' + (m.time || 0) + '_' + i);
-        if (seen[key]) continue;
-        seen[key] = true;
+        if (seen[key]) {
+          // A resolved decision must survive an older duplicate of the same card.
+          var existing = out[seen[key] - 1];
+          ['card', 'shopPayRequest'].forEach(function(field) {
+            var incoming = m[field], current = existing[field];
+            if (incoming && (incoming.resolved || incoming.result) &&
+                !(current && (current.resolved || current.result))) {
+              existing = Object.assign({}, existing);
+              existing[field] = Object.assign({}, current || {}, incoming);
+              out[seen[key] - 1] = existing;
+            }
+          });
+          continue;
+        }
+        seen[key] = out.length + 1;
         out.push(m);
       }
     };
@@ -945,8 +958,14 @@ const Storage = {
         }
         return;
       }
-      self._msgCache[cacheKey] = record.messages;
-      self._msgUpdatedAt[cacheKey] = updatedAt;
+      var current = self._msgCache[cacheKey] || [];
+      var restored = self._mergeMessages(current, record.messages);
+      self._msgCache[cacheKey] = restored;
+      self._msgUpdatedAt[cacheKey] = Math.max(curUpdatedAt, updatedAt);
+      record.messages = restored;
+      if (restored.length !== current.length) {
+        MessageDB.set(chatId, restored).catch(function() {});
+      }
       // 尽力同步回 localStorage，下次启动可同步读取，减少异步窗口
       self.set(cacheKey, record.messages);
       var page = document.getElementById('page-chat-room');
@@ -972,7 +991,7 @@ const Storage = {
       if (this._idbWriteTimers[chatId]) clearTimeout(this._idbWriteTimers[chatId]);
       this._idbWriteTimers[chatId] = setTimeout(function() {
         delete self._idbWriteTimers[chatId];
-        MessageDB.set(chatId, messages).catch(function() {});
+        MessageDB.set(chatId, self._msgCache[cacheKey] || []).catch(function() {});
       }, 500);
     }
   },

@@ -20,7 +20,9 @@ function shopRecord(p,action,label,target){try{ShopApp.init();ShopApp._addRecord
 function cardMsg(kind,p,extra,type){return {id:Date.now()+Math.floor(Math.random()*999),type:type||'other',text:extra&&extra.text||p.name,time:Date.now(),msgType:kind,product:{id:p.id,name:p.name,price:p.price,icon:p.icon,desc:p.desc||'',category:p.category},card:extra||{}}}
 window.RL7ShopChoice=function(msgId,choice){
  var cid=chatId(); if(!cid)return; var msgs=Storage.getMessages(cid)||[],m=msgs.find(x=>String(x.id)===String(msgId)); if(!m||m.card?.resolved)return;
- m.card=m.card||{};m.card.resolved=choice;Storage.setMessages(cid,msgs);var p=m.product||{};
+ m.card=m.card||{};m.card.resolved=choice;m.card.resolvedAt=Date.now();Storage.setMessages(cid,msgs);
+ // Persist the choice immediately; closing the page must not wait for debounce.
+ try{Storage._writeMessagesMirror(cid);if(window.MessageDB)MessageDB.set(cid,Storage.getMessages(cid)).catch(function(e){log('choice-save-error',String(e))})}catch(e){log('choice-save-error',String(e))}var p=m.product||{};
  if(choice==='buy'){addPurchase(p,'你同意后购买','partner');shopRecord(p,'partnerOwn','TA 购买','partner');textMsg(cid,pick(["Good. I was going to get it anyway.","Knew you'd say yes.","Excellent choice, darling."]));}
  else if(choice==='no'){textMsg(cid,pick(["Cruel. Fine, I'll survive.","Mm. Sensible. Boring, but sensible.","Very well. I'll leave it—for now."]));}
  else if(choice==='pay'){addPurchase(p,'你直接代付','self');shopRecord(p,'selfPayPartner','你替 TA 付款','partner');textMsg(cid,pick(["Oh? Spoiling me now? I could get used to this.","How generous of you. I'll remember this.","Darling, you really shouldn't encourage me."]));}
