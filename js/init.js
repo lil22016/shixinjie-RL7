@@ -16,6 +16,7 @@ function _msgArrayVersion(msgs) {
 }
 /* 合并两条消息（按 id 去重，按 time/id 升序），保留双方独有消息，杜绝覆盖丢记录 */
 function _mergeMessageArrays(a, b) {
+  if (window.Storage && Storage._mergeMessages) return Storage._mergeMessages(a, b);
   var out = [];
   var seen = {};
   var pushAll = function(arr) {
@@ -60,26 +61,19 @@ function restoreMessagesFromIDB() {
         var dbMsgs = record && Array.isArray(record.messages) ? record.messages : null;
         var lsVer = _msgArrayVersion(lsVal);
         var dbVer = dbMsgs ? _msgArrayVersion(dbMsgs) : -1;
-        if (dbVer < 0) {
-          // IDB 无记录：把 localStorage 迁入 IDB
-          return MessageDB.set(chatId, lsVal);
-        }
-        if (lsVer > dbVer) {
-          // localStorage 更新：覆盖 IDB
-          return MessageDB.set(chatId, lsVal);
-        }
-        if (lsVer < dbVer) {
-          // IDB 更新（上一会话新消息未同步回 localStorage）：反向把 IDB 写回 localStorage，保留 IDB 最新数据
-          try { Storage._writeMsgMirror(chatId, dbMsgs); } catch (e2) {}
-        }
-        // 版本相同但内容可能不同：合并双方，保留各自独有消息，避免任何一侧丢失
-        if (lsVer === dbVer) {
-          var merged = _mergeMessageArrays(lsVal, dbMsgs);
-          try { Storage._writeMsgMirror(chatId, merged); } catch (e2) {}
-          return MessageDB.set(chatId, merged);
-        }
-        return Promise.resolve();
-      }).catch(function() { return MessageDB.set(chatId, lsVal); }));
+        // Latest message alone does not prove a snapshot contains the whole history.
+        // Merge both persistent sources and current memory before writing anything.
+        var current = Storage._msgCache['msg_' + chatId] || [];
+        var merged = _mergeMessageArrays(current,
+          lsVer > dbVer ? _mergeMessageArrays(lsVal, dbMsgs) : _mergeMessageArrays(dbMsgs, lsVal));
+        Storage._msgCache['msg_' + chatId] = merged;
+        Storage._msgUpdatedAt['msg_' + chatId] = Date.now();
+        try { Storage._writeMessagesMirror(chatId); } catch (e2) {}
+        return MessageDB.set(chatId, merged);
+      }).catch(function(e) {
+        // A failed database read is not permission to overwrite it with a snapshot.
+        console.warn('[chat restore] Database read/merge failed:', e);
+      }));
     } catch (e) {}
   });
   // 2) 从 IndexedDB 读取全量聊天记录回填内存缓存，并刷新当前聊天页
@@ -94,18 +88,14 @@ function restoreMessagesFromIDB() {
         var cacheKey = 'msg_' + r.chatId;
         var updatedAt = r.updatedAt || 0;
         var curUpdatedAt = Storage._msgUpdatedAt[cacheKey] || 0;
-        if (updatedAt < curUpdatedAt) {
-          // 内存已有更新数据（用户已操作）：与 IDB 合并，保留双方独有消息
-          Storage._msgCache[cacheKey] = _mergeMessageArrays(Storage._msgCache[cacheKey], r.messages);
-          Storage._msgUpdatedAt[cacheKey] = Date.now();
-          if (window.MessageDB) MessageDB.set(r.chatId, Storage._msgCache[cacheKey]).catch(function() {});
-          try { Storage._writeMsgMirror(r.chatId, Storage._msgCache[cacheKey]); } catch (e) {}
-          return;
+        var current = Storage._msgCache[cacheKey] || [];
+        var merged = _mergeMessageArrays(current, r.messages);
+        Storage._msgCache[cacheKey] = merged;
+        Storage._msgUpdatedAt[cacheKey] = Math.max(curUpdatedAt, updatedAt);
+        try { Storage._writeMessagesMirror(r.chatId); } catch (e) {}
+        if (JSON.stringify(merged) !== JSON.stringify(r.messages)) {
+          MessageDB.set(r.chatId, merged).catch(function() {});
         }
-        Storage._msgCache[cacheKey] = r.messages;
-        Storage._msgUpdatedAt[cacheKey] = updatedAt;
-        // 尽力写回 localStorage，下次启动可同步读取，减少异步窗口（走容量受控写入，避免撑爆配额拖垮主题等设置）
-        try { Storage._writeMsgMirror(r.chatId, r.messages); } catch (e) {}
       }
     });
     var page = document.getElementById('page-chat-room');
