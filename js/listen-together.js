@@ -36,7 +36,12 @@
     index: -1,
     mode: 'sequential',   // 'sequential' | 'loop' | 'shuffle'
     _curPlaylistId: null, // 当前队列所属歌单 id（用于记忆上次播放位置）
-    together: true,
+    together: false,
+    roomActive: false,
+    presenceChangedAt: 0,
+    leaving: false,
+    _departureTimer: null,
+    _bubbleTimer: null,
     playing: false,
     serviceOk: false,
     srcMode: 'unknown',   // 数据源：'local' 本地音乐服务 | 'online' 在线兜底（GitHub 静态部署无需任何后台）
@@ -104,7 +109,7 @@
     ov.style.display = 'flex';
     LT._opening = true;
     closePlusMenu && closePlusMenu();
-    LT._chatId = (typeof _currentChatId === 'function') ? _currentChatId() : null;
+    if (!LT.roomActive) LT._chatId = (typeof _currentChatId === 'function') ? _currentChatId() : null;
     try { LT.playlists = Storage.get(LT.KEY_PL, []) || []; } catch (e) { LT.playlists = []; }
     ltShowView('playlist');
     ltRenderPlaylists();
@@ -114,12 +119,15 @@
     _syncVolumeUI();
     renderModeBtn();
     _detectService();
+    _startRoom();
+    renderRatings();
   };
 
   window.closeListenTogetherPanel = function () {
     var ov = $('listen-together-overlay');
     if (ov) ov.style.display = 'none';
     LT._opening = false;
+    if (!LT.sessionStarted) _endRoom();
     renderFloat();
   };
 
@@ -585,7 +593,7 @@
     LT._curPlaylistId = p.id;
     // Opening a playlist only shows its tracks. Playback requires a song tap or Shuffle.
     if(LT.audio){ LT.audio.pause(); LT.audio.removeAttribute('src'); LT.audio.load(); }
-    LT.index = -1; LT.sessionStarted=false; LT.loggedTrack=''; _stopTalkScheduler(); renderFloat(); renderMiniBar();
+    LT.index = -1; LT.sessionStarted=false; LT.loggedTrack=''; _endRoom(); renderFloat(); renderMiniBar();
     renderQueue();
   };
 
@@ -656,7 +664,7 @@
       LT.audio.addEventListener('play', function () {
         LT.playing = true; window.__musicPlaying = true;
         if($('lt-player-status'))$('lt-player-status').style.display='none';
-        if (!LT.sessionStarted) { LT.sessionStarted = true; _partnerSay(_musicLine('open', OPEN_TEXTS), true, '邀请'); }
+        if (!LT.sessionStarted) { LT.sessionStarted = true; _startRoom(); }
         var current=LT.queue[LT.index];
         if(current && LT.loggedTrack!==String(current.id)) { LT.loggedTrack=String(current.id); addLog('开始播放「'+current.name+'」'); }
         _scheduleTalk(); updateMediaSession(); renderPlayBtn(); renderFloat();
@@ -785,9 +793,9 @@
     renderPlayBtn();
   };
 
-  window.ltPrev = function () {
+  window.ltPrev = function (silent) {
     if (!LT.queue.length) return;
-    if (LT.together && Math.random() < 0.25) _partnerSay(_musicLine('userSkip', USER_SKIP_TEXTS), true, '切歌');
+    if (!silent && LT.together && Math.random() < 0.25) _partnerSay(_musicLine('userSkip', USER_SKIP_TEXTS), true, '切歌');
     ltPlay(LT.index - 1);
   };
 
@@ -901,8 +909,8 @@
 
   function renderPlayerInfo(song) {
     var companion=$('lt-companion-line'),companionStatus=$('lt-companion-status');
-    if(companion)companion.textContent='“听听这首怎么样。”';
-    if(companionStatus)companionStatus.textContent='TA 正在听「'+(song.name||'这首歌')+'」';
+    if(companion)companion.textContent=LT.together?'“听听这首怎么样。”':'音乐已经准备好。TA 有空时会来。';
+    if(companionStatus)companionStatus.textContent=LT.together?'TA 正在听「'+(song.name||'这首歌')+'」':'TA 暂时不在房间';
     var cover = $('lt-cover');
     if (cover) {
       if (song.cover) cover.innerHTML = '<img src="' + esc(safeCover(song.cover)) + '" alt="">';
@@ -935,84 +943,111 @@
   }
 
   /* ---------- 一起听（角色互动） ---------- */
-  function _scheduleTalk() {
-    if (LT._talkTimer) clearTimeout(LT._talkTimer);
-    if (!LT.queue.length || !LT.sessionStarted) { LT._talkTimer = null; return; }
-    var delay = 45 + Math.random() * 65; // 45~110 秒
-    LT._talkTimer = setTimeout(function () {
-      if (!LT.queue.length || !LT.sessionStarted) { _scheduleTalk(); return; }
-      _partnerAction();
-      _scheduleTalk();
-    }, delay * 1000);
-  }
-
-  function _stopTalkScheduler() {
-    if (LT._talkTimer) { clearTimeout(LT._talkTimer); LT._talkTimer = null; }
-  }
-
-  // 角色主动动作：暂停 / 切歌 / 恢复播放 / 点评（整体低频，静默率 40%）
-  function _partnerAction() {
-    var song=LT.queue[LT.index],opinion=song&&ratings()[String(song.id)]?.partner;
-    if(song && LT.queue.length>1 && LT.playing && opinion==='dislike' && Math.random()<0.36) {
-      addLog('TA 不喜欢「'+song.name+'」，切到了下一首');
-      _partnerSay(_musicLine('skip', SKIP_TEXTS),false,'TA 切歌');
-      window.ltNext(true); return;
+  function renderPresence() {
+    var me = {}, partner = {};
+    try {
+      me = Storage.getMyProfile() || {};
+      var profiles = Storage.getPartnerProfiles() || [];
+      partner = profiles.find(function(p) { return String(p.id) === String(LT._chatId); }) || profiles[0] || {};
+    } catch(e) {}
+    function avatar(id, profile, fallback) {
+      var el = $(id); if (!el) return;
+      var src = profile.avatarImage || '';
+      el.innerHTML = src ? '<img src="' + esc(src) + '" alt="">' : '<span>' + esc(profile.avatar || fallback) + '</span>';
+      el.setAttribute('aria-label', profile.nickname || profile.name || fallback);
     }
-    var r = Math.random();
-    // 每次调度并不必触发动作：40% 静默，保证主动动作整体低频
-    if (r >= 0.60) { LT._lastAction = 'idle'; return; }
-    // 动作区间分配：暂停16% / 切歌14% / 恢复播放14% / 点评16%
-    if (r < 0.12) {
-      // 暂停（需正在播放）
-      if (LT.audio && !LT.audio.paused && LT.audio.src) {
-        LT._lastAction = 'pause';
-        addLog('TA 暂停了播放');
-        _partnerSay(_musicLine('pause', PAUSE_TEXTS), false, 'TA 暂停');
-        LT.audio.pause(); LT.playing = false; renderPlayBtn();
-        return;
+    avatar('lt-room-me', me, '我'); avatar('lt-room-partner', partner, 'TA');
+    var other = $('lt-room-other'), room = $('lt-room-presence');
+    if (other) other.hidden = !LT.together;
+    if (room) room.classList.toggle('has-partner', LT.together);
+    if ($('lt-room-state')) $('lt-room-state').textContent = LT.together ? (LT.leaving ? '即将离开' : '一起听歌中') : '你正在独自听歌';
+    if ($('lt-companion-status') && !LT.together) $('lt-companion-status').textContent = 'TA 暂时不在房间';
+  }
+  function _presenceBubble(text) {
+    var el = $('lt-room-bubble'); if (!el || !text) return;
+    if (LT._bubbleTimer) clearTimeout(LT._bubbleTimer);
+    el.textContent = text; el.hidden = false;
+    LT._bubbleTimer = setTimeout(function() { el.hidden = true; LT._bubbleTimer = null; }, 8000);
+  }
+  function _joinRoom() {
+    if (!LT.roomActive || LT.together) return;
+    LT.together = true; LT.leaving = false; LT.presenceChangedAt = Date.now();
+    renderPresence();
+    var text = _musicLine('join', JOIN_TEXTS);
+    _partnerSay(text, true, 'TA 加入房间'); _presenceBubble(text);
+  }
+  function _leaveRoom() {
+    if (!LT.together || LT.leaving) return;
+    LT.leaving = true;
+    var text = _musicLine('leave', LEAVE_TEXTS);
+    _partnerSay(text, true, 'TA 准备离开'); _presenceBubble(text); renderPresence();
+    LT._departureTimer = setTimeout(function() {
+      LT.together = false; LT.leaving = false; LT.presenceChangedAt = Date.now();
+      LT._departureTimer = null; addLog('TA 已离开房间'); renderPresence();
+    }, 8000);
+  }
+  function _startRoom() {
+    if (LT.roomActive) { renderPresence(); return; }
+    LT.roomActive = true; LT.together = false; LT.leaving = false;
+    LT.presenceChangedAt = Date.now(); renderPresence();
+    LT._arrivalTimer = setTimeout(function() {
+      LT._arrivalTimer = null;
+      if (LT.roomActive && Math.random() < 0.35) _joinRoom();
+    }, 3000 + Math.random() * 5000);
+    _scheduleTalk();
+  }
+  function _endRoom() {
+    LT.roomActive = false; LT.together = false; LT.leaving = false;
+    ['_arrivalTimer','_departureTimer','_bubbleTimer'].forEach(function(key) {
+      if (LT[key]) clearTimeout(LT[key]); LT[key] = null;
+    });
+    if ($('lt-room-bubble')) $('lt-room-bubble').hidden = true;
+    _stopTalkScheduler(); renderPresence();
+  }
+  function _scheduleTalk() {
+    if (LT._talkTimer || !LT.roomActive) return;
+    LT._talkTimer = setTimeout(function() {
+      LT._talkTimer = null;
+      if (!LT.roomActive) return;
+      var elapsed = Date.now() - LT.presenceChangedAt;
+      if (!LT.together) {
+        if (elapsed >= 60000 && Math.random() < 0.25) _joinRoom();
+      } else if (!LT.leaving) {
+        if (elapsed >= 120000 && Math.random() < 0.12) _leaveRoom();
+        else _partnerAction();
       }
-    } else if (r < (opinion==='like'?0.125:0.30)) {
-      // 切歌（需歌单多于 1 首）
-      if (LT.queue.length > 1) {
-        LT._lastAction = 'skip';
-        addLog('TA 切到了下一首');
-        _partnerSay(_musicLine('skip', SKIP_TEXTS), false, 'TA 切歌');
-        var audio = LT.audio;
-        if (audio && audio.src) {
-          var nxt = (LT.index + 1 >= LT.queue.length) ? 0 : LT.index + 1;
-          ltPlay(nxt);
-        }
-        return;
-      }
-    } else if (r < 0.44) {
-      // 恢复播放（需暂停中且有歌）
-      var audio2 = LT.audio;
-      if (audio2 && audio2.paused && audio2.src) {
-        LT._lastAction = 'resume';
-        addLog('TA 继续播放');
-        _partnerSay(_musicLine('resume', RESUME_TEXTS), false, 'TA 继续播放');
-        var p = audio2.play();
-        if (p && p.catch) p.catch(function () { setServiceText('手机锁屏后需要手动点击播放继续', 'warn'); });
-        return;
-      }
-    } else {
-      // 点评（无前置条件）
-      var userRating= song&&ratings()[String(song.id)]?.user;
-      var likeChance=opinion==='like'?0.92:opinion==='dislike'?0.10:userRating==='like'?0.86:userRating==='dislike'?0.38:0.72;
-      LT._lastAction = Math.random() < likeChance ? 'praise' : 'dislike';
-      saveRating('partner',LT._lastAction === 'praise' ? 'like' : 'dislike');
-      addLog('TA '+(LT._lastAction === 'praise' ? '喜欢' : '踩了')+'「'+(LT.queue[LT.index]?.name||'当前歌曲')+'」');
-      _partnerSay(LT._lastAction === 'praise' ? _musicLine('praise', PRAISE_TEXTS) : _musicLine('dislike', DISLIKE_TEXTS), false, LT._lastAction === 'praise' ? 'TA 喜欢这首' : 'TA 踩了这首');
+      _scheduleTalk();
+    }, (45 + Math.random() * 30) * 1000);
+  }
+  function _stopTalkScheduler() {
+    if (LT._talkTimer) clearTimeout(LT._talkTimer);
+    LT._talkTimer = null;
+  }
+  // No partner pause/resume: only opinions and previous/next while present.
+  function _partnerAction() {
+    if (!LT.together || LT.leaving || !LT.playing) return;
+    var song = LT.queue[LT.index]; if (!song) return;
+    var opinion = (ratings()[String(song.id)] || {}).partner;
+    var r = Math.random(); if (r >= 0.60) return;
+    var skipChance = opinion === 'dislike' ? 0.25 : opinion === 'like' ? 0.04 : 0.12;
+    if (r < skipChance && LT.queue.length > 1) {
+      var previous = Math.random() < 0.20;
+      addLog('TA 切到了' + (previous ? '上一首' : '下一首'));
+      _partnerSay(_musicLine('skip', SKIP_TEXTS), true, 'TA 切歌');
+      if (previous) window.ltPrev(true); else window.ltNext(true);
       return;
     }
-    // 动作前置不满足 → 静默不发，同样保持低频
-    LT._lastAction = 'idle';
+    var userRating = (ratings()[String(song.id)] || {}).user;
+    var likeChance = opinion === 'like' ? 0.92 : opinion === 'dislike' ? 0.10 : userRating === 'like' ? 0.86 : 0.72;
+    var kind = Math.random() < likeChance ? 'like' : 'dislike';
+    saveRating('partner', kind);
+    _partnerSay(_musicLine(kind === 'like' ? 'praise' : 'dislike', kind === 'like' ? PRAISE_TEXTS : DISLIKE_TEXTS), true, kind === 'like' ? 'TA 喜欢这首' : 'TA 踩了这首');
   }
 
   /* ---------- 本次听歌记录（不写入聊天消息） ---------- */
   var _lastSayAt = 0;
   function _partnerSay(text, force, label) {
-    if (!text) return;
+    if (!text || !LT.together || (LT.leaving && label !== 'TA 准备离开')) return;
     var now = Date.now();
     if (!force && now - _lastSayAt < 6000) return;
     _lastSayAt = now;
@@ -1023,6 +1058,18 @@
   }
 
   /* ---------- 语料 ---------- */
+  var JOIN_TEXTS = [
+    "Move over, darling. I have a little time, and I intend to spend it here.",
+    "You started without me? How bold. Let me hear what you've chosen.",
+    "I'm here. Try not to look quite so pleased with yourself.",
+    "A brief escape from my duties. Naturally, I came to you."
+  ];
+  var LEAVE_TEXTS = [
+    "Duty calls. Keep listening, darling. I'll find you when I can.",
+    "I must disappear for a while. Don't let that stop your music.",
+    "Someone requires my attention. A terrible inconvenience, I know.",
+    "Back to my obligations. Save something good for my return."
+  ];
   var OPEN_TEXTS = [
     '来啦来啦，一起听歌呀～',
     '陪你听歌，比歌本身还开心～',
@@ -1082,7 +1129,7 @@
   var CARD_TYPES = [
     ['open','听歌邀请',OPEN_TEXTS], ['praise','TA 喜欢',PRAISE_TEXTS],
     ['dislike','TA 不喜欢',DISLIKE_TEXTS], ['skip','TA 切歌',SKIP_TEXTS],
-    ['pause','TA 暂停',PAUSE_TEXTS], ['resume','TA 继续',RESUME_TEXTS],
+    ['join','TA 加入房间',JOIN_TEXTS], ['leave','TA 离开房间',LEAVE_TEXTS],
     ['userPause','你暂停',USER_PAUSE_TEXTS], ['userSkip','你切歌',USER_SKIP_TEXTS],
     ['autoNext','自动下一首',AUTO_NEXT_TEXTS], ['userLike','你点赞',RATE_TEXTS],
     ['userDislike','你点踩',RATE_DISLIKE_TEXTS],
@@ -1121,6 +1168,7 @@
   window.ltClearLog=function(){LT.log=[];renderLog();};
   function ratings(){try{return JSON.parse(localStorage.getItem('lt_song_ratings')||'{}')||{};}catch(e){return {};}}
   function saveRating(who,kind){
+    if(who==='partner' && (!LT.together || LT.leaving))return;
     var song=LT.queue[LT.index];if(!song || !song.id)return;
     var data=ratings(),id=String(song.id);data[id]=data[id]||{};
     if(kind==='neutral')delete data[id][who];else data[id][who]=kind;
@@ -1165,7 +1213,7 @@
     var actions=$('lt-float-actions');if(actions)actions.style.display='none';
   };
   window.ltStopMusic=function(){
-    _stopTalkScheduler(); LT.sessionStarted=false;LT.queue=[];LT.index=-1;LT.loggedTrack='';LT.playing=false;window.__musicPlaying=false;LT.log=[];renderLog();
+    _endRoom(); LT.sessionStarted=false;LT.queue=[];LT.index=-1;LT.loggedTrack='';LT.playing=false;window.__musicPlaying=false;LT.log=[];renderLog();
     if(LT.audio){LT.audio.pause();LT.audio.removeAttribute('src');LT.audio.load();}
     if(navigator.mediaSession){try{navigator.mediaSession.playbackState='none';navigator.mediaSession.metadata=null;}catch(e){}}
     renderFloat();renderMiniBar();renderPlayBtn();closeListenTogetherPanel();

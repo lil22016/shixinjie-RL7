@@ -762,3 +762,19 @@ html.liquid-theme .lt-panel {
 #lt-view-playlist .lt-queue-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 13px; margin:4px 0 8px; border:1px solid #ffffff22; border-radius:15px; background:linear-gradient(90deg,#273b63aa,#6338587a); color:#ffffff9c; font-size:11px; }
 #lt-view-playlist .lt-queue-actions button { border:0; background:transparent; color:#f9e5f0; font-size:12px; font-weight:700; padding:7px; }
 #lt-view-playlist .lt-queue-actions button i { color:#ff759d; margin-right:6px; }
+/* Room presence: two portraits linked by a loose headphone cable. */
+#lt-view-player .lt-room-presence { position:relative; display:flex; align-items:center; justify-content:center; gap:48px; width:100%; min-height:88px; padding:12px 0 16px; isolation:isolate; }
+#lt-view-player .lt-room-avatar { width:54px; height:54px; border-radius:50%; border:2px solid #ffffffb3; background:#ffffff18; overflow:hidden; display:grid; place-items:center; box-shadow:0 5px 18px #0004; font-size:22px; }
+#lt-view-player .lt-room-avatar img { width:100%; height:100%; object-fit:cover; }
+#lt-view-player #lt-room-other { position:relative; }
+#lt-view-player #lt-room-other[hidden], #lt-view-player #lt-room-bubble[hidden] { display:none !important; }
+#lt-view-player .lt-room-wire { position:absolute; width:160px; height:90px; top:25px; left:50%; transform:translateX(-50%); z-index:-1; opacity:0; transition:opacity .3s; fill:none; stroke:#eadcf5a6; stroke-width:1.7; stroke-linecap:round; }
+#lt-view-player .has-partner .lt-room-wire { opacity:1; }
+#lt-view-player .lt-room-bubble { position:absolute; top:62px; right:-16px; width:min(230px,60vw); z-index:5; padding:12px 14px; border:1px solid #ffffff40; border-radius:16px 4px 16px 16px; background:#30233ef2; box-shadow:0 8px 28px #0006; color:#fff1f8; font-size:12px; line-height:1.6; }
+#lt-view-player .lt-room-bubble::before { content:''; position:absolute; top:-6px; right:35px; width:10px; height:10px; background:#30233e; border-top:1px solid #ffffff40; border-left:1px solid #ffffff40; transform:rotate(45deg); }
+.lt-sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+#lt-view-player .lt-companion-opinion { display:flex !important; align-items:center; gap:14px; }
+#lt-view-player #lt-partner-heart, #lt-view-player #lt-partner-dislike { display:inline-flex !important; width:24px; height:24px; color:#b4adc0 !important; opacity:1 !important; }
+#lt-view-player .lt-companion-opinion svg { width:100%; height:100%; fill:currentColor; }
+#lt-view-player #lt-partner-heart.on { color:#ff648b !important; filter:drop-shadow(0 0 7px #ff648b70); }
+#lt-view-player #lt-partner-dislike.on { color:#80b7fa !important; filter:drop-shadow(0 0 7px #80b7fa60); }
