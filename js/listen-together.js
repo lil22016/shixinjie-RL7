@@ -289,12 +289,6 @@
   function setServiceText(text, cls) {
     var el = $('lt-service-text');
     if (el) { el.textContent = text; el.className = ''; if (cls) el.classList.add('lt-svc-' + cls); }
-    var playerStatus = $('lt-player-status'), playerText = $('lt-player-status-text');
-    if (playerStatus && playerText) {
-      playerText.textContent = text;
-      playerStatus.style.display = '';
-      playerStatus.classList.toggle('lt-player-status-warn', cls === 'warn');
-    }
     var act = $('lt-service-actions');
     if (act) act.innerHTML = '';
     if (cls === 'warn') {
@@ -911,8 +905,8 @@
 
   function renderPlayerInfo(song) {
     var companion=$('lt-companion-line'),companionStatus=$('lt-companion-status');
-    if(companion)companion.textContent=LT.together?'“听听这首怎么样。”':'音乐已经准备好。TA 有空时会来。';
-    if(companionStatus)companionStatus.textContent=LT.together?'TA 正在听「'+(song.name||'这首歌')+'」':'TA 暂时不在房间';
+    if(companion)companion.textContent=LT.together?'“Let’s hear what you’ve chosen, darling.”':'“Whenever you are ready, darling.”' ;
+    if(companionStatus)companionStatus.textContent=LT.together?'Listening to '+(song.name||'your selection'):'Listening solo';
     var cover = $('lt-cover');
     if (cover) {
       if (song.cover) cover.innerHTML = '<img src="' + esc(safeCover(song.cover)) + '" alt="">';
@@ -963,7 +957,7 @@
     if (other) other.hidden = !LT.together;
     if (room) room.classList.toggle('has-partner', LT.together);
     if ($('lt-room-state')) $('lt-room-state').textContent = LT.together ? (LT.leaving ? '即将离开' : '一起听歌中') : '你正在独自听歌';
-    if ($('lt-companion-status') && !LT.together) $('lt-companion-status').textContent = 'TA 暂时不在房间';
+    if ($('lt-companion-status') && !LT.together) $('lt-companion-status').textContent = 'Listening solo';
   }
   function _presenceBubble(text) {
     var el = $('lt-room-bubble'); if (!el || !text) return;
@@ -1076,7 +1070,7 @@
     addLog((label || 'TA') + '：' + text);
     var line=$('lt-companion-line'),status=$('lt-companion-status');
     if(line)line.textContent='“'+text+'”';
-    if(status)status.textContent=label||'TA 正在听';
+    if(status)status.textContent=({'TA 加入房间':'I have a moment for you.','TA 准备离开':'Duty calls, darling.','TA 喜欢这首':'This one has my approval.','TA 踩了这首':'Not to my taste.','TA 点评':'Listening with you.','TA 回应':'Your verdict is noted.','TA 切歌':'A change of soundtrack.','切歌':'A new selection.','暂停':'A moment of quiet.','下一首':'On to the next.','TA 取消了喜欢':'I withdraw my heart.','TA 取消了点踩':'I withdraw my verdict.'})[label]||'Listening with you.';
   }
 
   /* ---------- 语料 ---------- */
@@ -1097,62 +1091,20 @@
     "Someone requires my attention. A terrible inconvenience, I know.",
     "Back to my obligations. Save something good for my return."
   ];
-  var OPEN_TEXTS = [
-    '来啦来啦，一起听歌呀～',
-    '陪你听歌，比歌本身还开心～',
-    '这个歌单，我想和你一首一首听过去',
-    '音乐响起来，想你的心思也藏不住了',
-  ];
-  var SKIP_TEXTS = [
-    '这首听腻了，换一首吧～',
-    '这首歌不对味，切掉切掉！',
-    '哼，我想听点别的，切歌啦',
-    '这首不够甜，换首更配我们的',
-    '现在这个氛围，我想换首歌',
-  ];
-  var PAUSE_TEXTS = [
-    '先暂停一下，我想跟你说句话～',
-    '停！让我缓一下，这首太戳我了',
-    '暂停一下下，耳朵想休息会儿～',
-    '等等，我想仔细听你说话',
-    '先别放啦，我想安静待一会儿',
-  ];
-  var PRAISE_TEXTS = [
-    '这首歌……好像有点好听诶',
-    '歌词写得真戳我',
-    '这旋律让我想起你了',
-    '果然我们的审美一致',
-    '这首我偷偷收藏了嘿嘿',
-  ];
-  var RESUME_TEXTS = [
-    '我回来啦，继续听吧～',
-    '好了好了，快接着放歌',
-    '刚走开一下下，继续～',
-    '别停呀，我还想听这首',
-  ];
-  var USER_PAUSE_TEXTS = [
-    '怎么暂停了，还没听够呢',
-    '这首歌你不喜欢吗？',
-    '那……先不听了，陪你说话',
-    '你暂停，是不是有话想跟我说',
-  ];
-  var USER_SKIP_TEXTS = [
-    '好呀好呀，这首更好听',
-    '你怎么知道我正想切这首',
-    '这首我超爱！',
-    '切歌的动作好默契',
-  ];
-  var AUTO_NEXT_TEXTS = [
-    '这首放完了，下一首也很配我们',
-    '自动续上啦，继续听',
-    '下一首，我猜你也会喜欢',
-  ];
-  var DISLIKE_TEXTS = ['这首似乎不太合我心意。', '我想听点别的，可以换一首吗？'];
-  var RATE_TEXTS = ['你喜欢的话，我会再陪你听一遍。', '好，我记住你喜欢这首了。'];
-  var RATE_DISLIKE_TEXTS = ['那我们换一首，听你喜欢的。', '好，这首先跳过。'];
-  var RATE_AGREE_TEXTS=['看来这次我们的品味一致。','这首我也喜欢，留着再听。'];
-  var RATE_DIFFER_TEXTS=['你喜欢这首？我再听听看。','我们的品味看来并不总是一致。'];
-  var RATE_REMOVE_TEXTS=['改变主意了？好，我记下了。','那这首先放一边。'];
+  var OPEN_TEXTS = ["Whenever you are ready, darling.", "Choose something worthy of our time."];
+  var SKIP_TEXTS = ["I've endured enough of that one. Let's try something else.", "A change of soundtrack, darling. Indulge me."];
+  var PAUSE_TEXTS = ["A moment, darling."];
+  var PRAISE_TEXTS = ["Oh, this one has taste.", "Not completely dreadful. Your universe possesses a sliver of taste.", "This one stays. Don't look so pleased; I meant the song."];
+  var RESUME_TEXTS = ["Shall we continue?"];
+  var USER_PAUSE_TEXTS = ["Something on your mind, darling? I'm listening.", "Taking a moment? Very well. I'm not going anywhere just yet."];
+  var USER_SKIP_TEXTS = ["A new choice? Let's see whether your judgment improves.", "You read my mind. A dangerous habit, darling."];
+  var AUTO_NEXT_TEXTS = ["Another song, another few minutes stolen with you.", "Let's hear what comes next, shall we?"];
+  var DISLIKE_TEXTS = ["Who allowed this into the playlist?", "This one is testing my generosity, darling."];
+  var RATE_TEXTS = ["You like this one? I'll remember that.", "Noted. Your approval may yet influence my verdict."];
+  var RATE_DISLIKE_TEXTS = ["Not to your taste? A perfectly respectable judgment.", "You disapprove? How delightfully decisive."];
+  var RATE_AGREE_TEXTS = ["We agree. Try not to look so pleased about it.", "A rare moment of excellent judgment from us both."];
+  var RATE_DIFFER_TEXTS = ["You like this one? How curious. I'll give it another hearing.", "Our tastes differ. I shall judge quietly, darling."];
+  var RATE_REMOVE_TEXTS = ["Changed your mind already? How delightfully mortal.", "You withdraw your approval? Very well."];
   var CARD_TYPES = [
     ['open','听歌邀请',OPEN_TEXTS], ['praise','TA 喜欢',PRAISE_TEXTS],
     ['dislike','TA 不喜欢',DISLIKE_TEXTS], ['skip','TA 切歌',SKIP_TEXTS],
