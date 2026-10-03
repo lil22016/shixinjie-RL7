@@ -778,3 +778,9 @@ html.liquid-theme .lt-panel {
 #lt-view-player .lt-companion-opinion svg { width:100%; height:100%; fill:currentColor; }
 #lt-view-player #lt-partner-heart.on { color:#ff648b !important; filter:drop-shadow(0 0 7px #ff648b70); }
 #lt-view-player #lt-partner-dislike.on { color:#80b7fa !important; filter:drop-shadow(0 0 7px #80b7fa60); }
+
+/* The presence bubble must paint above the player's backdrop-filter layer. */
+#lt-view-player .lt-room-presence { z-index:20; overflow:visible; }
+#lt-view-player .lt-player-card { position:relative; z-index:1; }
+#lt-view-player #lt-room-other { z-index:2; }
+#lt-view-player .lt-room-bubble { z-index:30; }

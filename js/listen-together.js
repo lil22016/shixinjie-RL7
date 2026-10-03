@@ -38,6 +38,8 @@
     _curPlaylistId: null, // 当前队列所属歌单 id（用于记忆上次播放位置）
     together: false,
     roomActive: false,
+    _ratings: null,
+    _presenceTimer: null,
     presenceChangedAt: 0,
     leaving: false,
     _departureTimer: null,
@@ -995,27 +997,35 @@
       if (LT.roomActive && Math.random() < 0.35) _joinRoom();
     }, 3000 + Math.random() * 5000);
     _scheduleTalk();
+    _schedulePresence();
   }
   function _endRoom() {
     LT.roomActive = false; LT.together = false; LT.leaving = false;
-    ['_arrivalTimer','_departureTimer','_bubbleTimer'].forEach(function(key) {
+    ['_arrivalTimer','_departureTimer','_bubbleTimer','_presenceTimer'].forEach(function(key) {
       if (LT[key]) clearTimeout(LT[key]); LT[key] = null;
     });
     if ($('lt-room-bubble')) $('lt-room-bubble').hidden = true;
     _stopTalkScheduler(); renderPresence();
+  }
+  function _schedulePresence() {
+    if (LT._presenceTimer || !LT.roomActive) return;
+    LT._presenceTimer = setTimeout(function() {
+      LT._presenceTimer = null;
+      if (!LT.roomActive) return;
+      if (!LT.together) {
+        if (Math.random() < 0.25) _joinRoom();
+      } else if (!LT.leaving && Date.now() - LT.presenceChangedAt >= 300000) {
+        if (Math.random() < 0.10) _leaveRoom();
+      }
+      _schedulePresence();
+    }, 300000);
   }
   function _scheduleTalk() {
     if (LT._talkTimer || !LT.roomActive) return;
     LT._talkTimer = setTimeout(function() {
       LT._talkTimer = null;
       if (!LT.roomActive) return;
-      var elapsed = Date.now() - LT.presenceChangedAt;
-      if (!LT.together) {
-        if (elapsed >= 60000 && Math.random() < 0.25) _joinRoom();
-      } else if (!LT.leaving) {
-        if (elapsed >= 120000 && Math.random() < 0.12) _leaveRoom();
-        else _partnerAction();
-      }
+      _partnerAction();
       _scheduleTalk();
     }, (45 + Math.random() * 30) * 1000);
   }
@@ -1037,10 +1047,22 @@
       if (previous) window.ltPrev(true); else window.ltNext(true);
       return;
     }
-    var userRating = (ratings()[String(song.id)] || {}).user;
-    var likeChance = opinion === 'like' ? 0.92 : opinion === 'dislike' ? 0.10 : userRating === 'like' ? 0.86 : 0.72;
+    var item = ratings()[String(song.id)] || {};
+    // A verdict stays stable: only rarely withdraw it, never reverse directly.
+    if (opinion) {
+      if (Date.now() - Number(item.partnerChangedAt || 0) >= 180000 && Math.random() < 0.05) {
+        saveRating('partner', 'neutral');
+        _partnerSay(_musicLine('neutral', NEUTRAL_TEXTS), true, 'TA 取消了' + (opinion === 'like' ? '喜欢' : '点踩'));
+      } else {
+        _partnerSay(_musicLine(opinion === 'like' ? 'praise' : 'dislike', opinion === 'like' ? PRAISE_TEXTS : DISLIKE_TEXTS), false, 'TA 点评');
+      }
+      return;
+    }
+    // After withdrawing a verdict, allow at least three minutes of neutrality.
+    if (item.partnerChangedAt && Date.now() - item.partnerChangedAt < 180000) return;
+    var likeChance = item.user === 'like' ? 0.86 : 0.72;
     var kind = Math.random() < likeChance ? 'like' : 'dislike';
-    saveRating('partner', kind);
+    if (!saveRating('partner', kind)) return;
     _partnerSay(_musicLine(kind === 'like' ? 'praise' : 'dislike', kind === 'like' ? PRAISE_TEXTS : DISLIKE_TEXTS), true, kind === 'like' ? 'TA 喜欢这首' : 'TA 踩了这首');
   }
 
@@ -1058,6 +1080,11 @@
   }
 
   /* ---------- 语料 ---------- */
+  var NEUTRAL_TEXTS = [
+    "Perhaps I was too quick to judge. Let me listen without a verdict for now.",
+    "I'm withdrawing that verdict, darling. It requires further consideration.",
+    "Neither a heart nor a condemnation. Not everything demands a decision."
+  ];
   var JOIN_TEXTS = [
     "Move over, darling. I have a little time, and I intend to spend it here.",
     "You started without me? How bold. Let me hear what you've chosen.",
@@ -1129,7 +1156,7 @@
   var CARD_TYPES = [
     ['open','听歌邀请',OPEN_TEXTS], ['praise','TA 喜欢',PRAISE_TEXTS],
     ['dislike','TA 不喜欢',DISLIKE_TEXTS], ['skip','TA 切歌',SKIP_TEXTS],
-    ['join','TA 加入房间',JOIN_TEXTS], ['leave','TA 离开房间',LEAVE_TEXTS],
+    ['neutral','TA 取消评价／无感',NEUTRAL_TEXTS], ['join','TA 加入房间',JOIN_TEXTS], ['leave','TA 离开房间',LEAVE_TEXTS],
     ['userPause','你暂停',USER_PAUSE_TEXTS], ['userSkip','你切歌',USER_SKIP_TEXTS],
     ['autoNext','自动下一首',AUTO_NEXT_TEXTS], ['userLike','你点赞',RATE_TEXTS],
     ['userDislike','你点踩',RATE_DISLIKE_TEXTS],
@@ -1166,14 +1193,29 @@
   }
   window.ltToggleLog=function(){var el=$('lt-session-log');if(!el)return;el.hidden=!el.hidden;$('lt-log-toggle').textContent='SESSION '+(el.hidden?'▸':'▾');};
   window.ltClearLog=function(){LT.log=[];renderLog();};
-  function ratings(){try{return JSON.parse(localStorage.getItem('lt_song_ratings')||'{}')||{};}catch(e){return {};}}
+  function ratings(){
+    if (LT._ratings) return LT._ratings;
+    try {
+      var durable = typeof Storage !== 'undefined' ? Storage.get('ltSongRatings_v2', null) : null;
+      LT._ratings = durable || JSON.parse(localStorage.getItem('lt_song_ratings') || '{}') || {};
+    } catch(e) { LT._ratings = {}; }
+    return LT._ratings;
+  }
   function saveRating(who,kind){
-    if(who==='partner' && (!LT.together || LT.leaving))return;
-    var song=LT.queue[LT.index];if(!song || !song.id)return;
+    if(who==='partner' && (!LT.together || LT.leaving))return false;
+    var song=LT.queue[LT.index];if(!song || !song.id)return false;
     var data=ratings(),id=String(song.id);data[id]=data[id]||{};
+    var current=data[id][who]||'neutral';
+    if(who==='partner' && current!=='neutral' && kind!=='neutral' && current!==kind)return false;
+    if(current===kind)return false;
     if(kind==='neutral')delete data[id][who];else data[id][who]=kind;
-    try{localStorage.setItem('lt_song_ratings',JSON.stringify(data));}catch(e){}
+    if(who==='partner')data[id].partnerChangedAt=Date.now();
+    // Memory controls the visible state even when the localStorage mirror is full.
+    LT._ratings=data;
+    if(typeof Storage!=='undefined') Storage.set('ltSongRatings_v2',data);
+    else try{localStorage.setItem('lt_song_ratings',JSON.stringify(data));}catch(e){setServiceText('评价暂未保存，请先导出备份','warn');}
     renderRatings();
+    return true;
   }
   function renderRatings(){
     var song=LT.queue[LT.index],item=song&&ratings()[String(song.id)]||{};
@@ -1187,7 +1229,7 @@
   window.ltRateSong=function(kind){
     var song=LT.queue[LT.index];if(!song)return;
     var old=ratings()[String(song.id)]||{},next=old.user===kind?'neutral':kind;
-    saveRating('user',next);
+    if(!saveRating('user',next))return;
     addLog('你'+(next==='neutral'?'取消了对':next==='like'?'喜欢':'踩了')+'「'+song.name+'」'+(next==='neutral'?'的评价':''));
     var category,defaultLines;
     if(next==='neutral'){category='removeRating';defaultLines=RATE_REMOVE_TEXTS;}
