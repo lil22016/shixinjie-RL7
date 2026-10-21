@@ -11,7 +11,7 @@
 (function(global){
 'use strict';
 
-var PUSH_SERVER = 'https://YOUR-PUSH-SERVICE.workers.dev';   // ← 改成你的 Worker 地址，末尾不要加 /
+var PUSH_SERVER = 'https://shixinjie-push.kugaiwo.workers.dev';   // ← 改成你的 Worker 地址，末尾不要加 /
 
 var LS_ON='rl7WebPushOn', LS_ID='rl7WebPushId', LS_SUB='rl7WebPushSub';
 var DB='rl7-push', STORE='kv';
