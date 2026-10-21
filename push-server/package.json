@@ -1,0 +1,12 @@
+{
+  "name": "shixinjie-push",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "keys": "node gen-vapid.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
