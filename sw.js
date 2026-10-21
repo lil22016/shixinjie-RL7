@@ -1,5 +1,5 @@
-/* RL7 service worker — version 2026-10-20-v91push1 */
-const RL7_SW_VERSION='2026-10-20-v91push1';
+/* RL7 service worker — version 2026-10-20-v92chat1 */
+const RL7_SW_VERSION='2026-10-20-v92chat1';
 self.addEventListener('install',function(){self.skipWaiting();});
 self.addEventListener('activate',function(e){e.waitUntil(self.clients.claim());});
 self.addEventListener('message',function(e){if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
@@ -65,7 +65,7 @@ async function handlePush(data){
     tag:'rl7-msg-'+Date.now(),
     icon:'./favicon.svg',
     badge:'./favicon.svg',
-    data:{url:self.registration.scope}
+    data:{url:self.registration.scope,chatId:(snap&&snap.chatId)||''}
   });
 }
 
@@ -77,9 +77,10 @@ self.addEventListener('push',function(e){
 
 self.addEventListener('notificationclick',function(e){
   e.notification.close();
-  const url=(e.notification.data&&e.notification.data.url)||self.registration.scope;
+  const d=e.notification.data||{};
+  const url=(d.url||self.registration.scope)+'?openChat='+encodeURIComponent(d.chatId||'1');
   e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(list){
-    for(const c of list){if('focus' in c){c.postMessage({type:'rl7-push-queue'});return c.focus();}}
+    for(const c of list){if('focus' in c){c.postMessage({type:'rl7-push-queue'});c.postMessage({type:'rl7-open-chat',chatId:d.chatId||''});return c.focus();}}
     return self.clients.openWindow?self.clients.openWindow(url):null;
   }));
 });

@@ -248,10 +248,20 @@ function init(){
   if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',function(e){
     var t=e.data&&e.data.type;
     if(t==='rl7-push-queue')drainQueue();
+    if(t==='rl7-open-chat')drainQueue().then(function(){ if(window.RL7OpenChat)RL7OpenChat(e.data.chatId); });
     if(t==='rl7-push-resubscribe'&&isOn()&&configured())subscribe().then(function(){registerNow(false);}).catch(function(){});
   });
   /* 等聊天数据（IndexedDB）恢复后再写入队列 */
-  setTimeout(function(){ onVisible(); if(isOn())startHeartbeat(); },1500);
+  setTimeout(function(){
+    onVisible(); if(isOn())startHeartbeat();
+    /* 从系统通知点进来：打开对应聊天，并把地址栏的参数去掉 */
+    var m=/[?&]openChat=([^&]*)/.exec(location.search);
+    if(m){
+      var cid=decodeURIComponent(m[1]); if(cid==='1')cid='';
+      try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}
+      drainQueue().then(function(){ if(window.RL7OpenChat)RL7OpenChat(cid); });
+    }
+  },1500);
   /* 设置页面可能是后渲染的，补一次注入 */
   setTimeout(injectSettings,3000);
 }

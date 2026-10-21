@@ -23,7 +23,11 @@ function chatOpen(){
 }
 function syncChatViewport(){
   if (!ios || !chatOpen()) return;
-  var top = vv ? Math.max(0, Math.round(vv.offsetTop || 0)) : 0;
+  /* v92: offsetTop is only meaningful while the keyboard is up. During an iOS
+     rubber-band overscroll it briefly reports a non-zero value, which used to
+     push the whole chat down and expose the black page background. */
+  var top = (vv && isChatInputFocused()) ? Math.max(0, Math.round(vv.offsetTop || 0)) : 0;
+  if (!isChatInputFocused() && (window.scrollY || document.documentElement.scrollTop)) { try { window.scrollTo(0, 0); } catch(e){} }
   var h = vv ? Math.round(vv.height) : Math.round(window.innerHeight || 0);
   if (!h) return;
   root.style.setProperty('--rl7-chat-vv-top', top + 'px');

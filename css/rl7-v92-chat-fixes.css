@@ -1,0 +1,52 @@
+/* RL7 V92 — 聊天列表不再把滚动传给整页；站内消息横幅改为深色底，任何主题下都清楚 */
+
+/* 聊天打开时：整个网页不滚、不回弹，只有聊天列表自己滚 */
+html:has(#page-chat-room.active),
+html:has(#page-chat-room.active) body {
+  overscroll-behavior: none !important;
+}
+#page-chat-room .chat-messages,
+#chat-messages {
+  overscroll-behavior-y: contain !important;
+}
+
+/* 站内顶部消息横幅 */
+#app .msg-banner,
+.msg-banner#msg-top-banner {
+  position: fixed !important;
+  top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+  left: 50% !important;
+  right: auto !important;
+  width: min(calc(100vw - 24px), 496px) !important;
+  margin-left: calc(min(calc(100vw - 24px), 496px) / -2) !important;
+  z-index: 2147483500 !important;
+  background: rgba(28, 30, 40, 0.94) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
+  backdrop-filter: blur(18px) saturate(140%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  padding: 11px 14px !important;
+}
+#msg-top-banner,
+#msg-top-banner * {
+  text-shadow: none !important;
+}
+#msg-top-banner .msg-banner-title {
+  color: #ffffff !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+}
+#msg-top-banner .msg-banner-text {
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 0.78rem !important;
+}
+#msg-top-banner .msg-banner-time {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+#msg-top-banner .msg-banner-icon {
+  color: #ffffff !important;
+}
+#msg-top-banner:active {
+  transform: scale(0.98) !important;
+}
