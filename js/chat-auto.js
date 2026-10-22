@@ -32,34 +32,75 @@ function stopSimulateCallTimer() {
   }
 }
 
+/* === 主动发送节奏：固定 / 随机区间 + 勿扰时间段（V94） ===
+   proactiveSendInterval      最短间隔（秒）；未开随机时就是固定间隔
+   proactiveIntervalRandom    是否在区间内随机
+   proactiveIntervalMax       最长间隔（秒）
+   proactiveDnd               是否开启勿扰
+   proactiveDndStart/End      "HH:MM"，可跨午夜（如 00:00–10:00、23:00–08:00） */
+function _paceMinMax() {
+  var mn = Storage.getProactiveSendInterval();
+  if (!mn || mn <= 0) mn = 600;
+  var mx = mn;
+  if (Storage.get('proactiveIntervalRandom', false)) {
+    mx = Number(Storage.get('proactiveIntervalMax', 0)) || mn;
+    if (mx < mn) mx = mn;
+  }
+  return { min: mn, max: mx };
+}
+function _paceDnd() {
+  if (!Storage.get('proactiveDnd', false)) return null;
+  var p = function (t) { var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '')); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+  var s = p(Storage.get('proactiveDndStart', '00:00')), e = p(Storage.get('proactiveDndEnd', '10:00'));
+  if (s === null || e === null || s === e) return null;
+  return { start: s, end: e };
+}
+function _paceInDnd(ts, d) {
+  d = d === undefined ? _paceDnd() : d;
+  if (!d) return false;
+  var t = new Date(ts), m = t.getHours() * 60 + t.getMinutes();
+  return d.start < d.end ? (m >= d.start && m < d.end) : (m >= d.start || m < d.end);
+}
+/* 勿扰结束的那一刻（ts 之后最近的一次） */
+function _paceDndEndAfter(ts, d) {
+  var t = new Date(ts);
+  t.setHours(Math.floor(d.end / 60), d.end % 60, 0, 0);
+  if (t.getTime() <= ts) t.setDate(t.getDate() + 1);
+  return t.getTime();
+}
+/* 从 from 起算下一次发送时间：先按间隔抽一个数，落在勿扰里就顺延到勿扰结束后 0~最短间隔 内的随机时刻 */
+function _paceNextTime(from) {
+  var mm = _paceMinMax(), d = _paceDnd();
+  var sec = mm.min + Math.random() * (mm.max - mm.min);
+  var t = from + Math.round(sec * 1000);
+  if (d && _paceInDnd(t, d)) t = _paceDndEndAfter(t, d) + Math.round(Math.random() * Math.min(mm.min, 1800) * 1000);
+  return t;
+}
+window.RL7Pace = { minMax: _paceMinMax, dnd: _paceDnd, inDnd: _paceInDnd, nextTime: _paceNextTime };
+
 function startProactiveTimer(chatId) {
   // 已在运行：仅更新目标聊天 ID，不重置计时（避免切换聊天室/重复进入导致发送时刻被无限顺延）
   if (_chatProactiveTimer) {
     if (chatId) _proactiveChatId = chatId;
     return;
   }
-  var intervalSec = Storage.getProactiveSendInterval(); // 秒
-  if (!intervalSec || intervalSec <= 0) intervalSec = 600;
   _proactiveChatId = chatId || '';
-  _proactiveNextTime = Date.now() + intervalSec * 1000;
-  _scheduleProactiveTick(intervalSec * 1000);
+  _proactiveNextTime = _paceNextTime(Date.now());
+  _scheduleProactiveTick(_proactiveNextTime - Date.now());
 }
 
 function _scheduleProactiveTick(delayMs) {
+  // 浏览器 setTimeout 上限约 24.8 天，且长时间等待时分段检查更稳
+  delayMs = Math.max(1000, Math.min(delayMs, 10 * 60 * 1000));
   _chatProactiveTimer = setTimeout(function() {
     _chatProactiveTimer = null;
-    var intervalSec = Storage.getProactiveSendInterval();
-    if (!intervalSec || intervalSec <= 0) intervalSec = 600;
     var now = Date.now();
     if (now >= _proactiveNextTime) {
-      // 到期：立即发送并滚动到下一周期（若因页面节流/延迟错过，只补发一次，不连发轰炸）
-      _proactiveNextTime = now + intervalSec * 1000;
-      _doProactiveSend();
-      _scheduleProactiveTick(intervalSec * 1000);
-    } else {
-      // 未到期（提前唤醒）：继续等待剩余时间，保证到点必发
-      _scheduleProactiveTick(Math.min(intervalSec * 1000, _proactiveNextTime - now));
+      // 到期：勿扰中只顺延不发送；否则发送并抽下一次（错过只补发一次，不连发轰炸）
+      if (!_paceInDnd(now)) _doProactiveSend();
+      _proactiveNextTime = _paceNextTime(now);
     }
+    _scheduleProactiveTick(_proactiveNextTime - Date.now());
   }, delayMs);
 }
 

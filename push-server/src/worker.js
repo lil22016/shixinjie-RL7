@@ -4,7 +4,7 @@
  * 消息内容（字卡）由手机上的 sw.js 从本地缓存里随机抽取，服务器不保存任何聊天内容。
  *
  * 接口（全部 POST，body 为 JSON 文本；Content-Type 用 text/plain 也可，便于 sendBeacon）：
- *   /api/register  {id, subscription, intervalSec, nextAt?}   保存订阅并按 nextAt 排期
+ *   /api/register  {id, subscription, minSec, maxSec, dnd?, nextAt?}   保存订阅并按 nextAt 排期（dnd={start,end,tzo}）
  *   /api/schedule  {id, intervalSec, nextAt}                  页面切到后台：交给服务器接管
  *   /api/active    {id, intervalSec, activeForSec}            页面在前台：暂停推送（到期自动恢复）
  *   /api/test      {id}                                        立即推一条测试
@@ -112,6 +112,43 @@ async function sendPush(env, subscription, payloadObj) {
   return { status: res.status, text: res.status >= 300 ? (await res.text()).slice(0, 300) : '' };
 }
 
+
+/* ---------------- 发送节奏：随机区间 + 勿扰（与网页 chat-auto.js 规则一致） ----------------
+ * rec.minSec / rec.maxSec：间隔区间（相等即固定）
+ * rec.dnd = { start, end, tzo }：分钟数（0~1439），tzo = 浏览器 getTimezoneOffset()
+ */
+function readPace(body, rec) {
+  const min = clampInterval(body.minSec || body.intervalSec || (rec && rec.minSec) || (rec && rec.intervalSec));
+  let max = clampInterval(body.maxSec || min);
+  if (max < min) max = min;
+  let dnd = null;
+  const d = body.dnd;
+  if (d && Number.isFinite(+d.start) && Number.isFinite(+d.end) && +d.start !== +d.end) {
+    dnd = { start: ((+d.start % 1440) + 1440) % 1440, end: ((+d.end % 1440) + 1440) % 1440, tzo: Number.isFinite(+d.tzo) ? +d.tzo : 0 };
+  }
+  return { minSec: min, maxSec: max, intervalSec: min, dnd };
+}
+function inDnd(ts, d) {
+  if (!d) return false;
+  const local = new Date(ts - d.tzo * 60000);
+  const m = local.getUTCHours() * 60 + local.getUTCMinutes();
+  return d.start < d.end ? (m >= d.start && m < d.end) : (m >= d.start || m < d.end);
+}
+function dndEndAfter(ts, d) {
+  const local = new Date(ts - d.tzo * 60000);
+  local.setUTCHours(Math.floor(d.end / 60), d.end % 60, 0, 0);
+  let t = local.getTime() + d.tzo * 60000;
+  if (t <= ts) t += 86400000;
+  return t;
+}
+function nextTime(from, rec) {
+  const min = rec.minSec || rec.intervalSec || 600, max = Math.max(min, rec.maxSec || min);
+  let t = from + Math.round((min + Math.random() * (max - min)) * 1000);
+  if (rec.dnd && inDnd(t, rec.dnd)) t = dndEndAfter(t, rec.dnd) + Math.round(Math.random() * Math.min(min, 1800) * 1000);
+  return t;
+}
+export const _pace = { readPace, inDnd, dndEndAfter, nextTime };
+
 /* ---------------- Durable Object：每个设备一个，用 alarm 精确排期 ---------------- */
 export class PushClient {
   constructor(state, env) {
@@ -131,29 +168,28 @@ export class PushClient {
         const sub = body.subscription;
         if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return json({ ok: false, error: 'bad subscription' }, 400);
         if (!/^https:\/\//.test(sub.endpoint)) return json({ ok: false, error: 'bad endpoint' }, 400);
-        rec = {
+        rec = Object.assign({
           subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
-          intervalSec: clampInterval(body.intervalSec),
           activeUntil: 0,
           failures: 0,
-        };
-        rec.nextAt = Number(body.nextAt) > now ? Number(body.nextAt) : now + rec.intervalSec * 1000;
+        }, readPace(body, null));
+        rec.nextAt = Number(body.nextAt) > now ? Number(body.nextAt) : nextTime(now, rec);
         await st.put('rec', rec);
         await st.setAlarm(rec.nextAt);
         return json({ ok: true, nextAt: rec.nextAt });
       }
       case '/api/schedule': {
         if (!rec) return json({ ok: false, error: 'not registered' }, 404);
-        rec.intervalSec = clampInterval(body.intervalSec || rec.intervalSec);
+        Object.assign(rec, readPace(body, rec));
         rec.activeUntil = 0;
-        rec.nextAt = Number(body.nextAt) > now ? Number(body.nextAt) : now + rec.intervalSec * 1000;
+        rec.nextAt = Number(body.nextAt) > now ? Number(body.nextAt) : nextTime(now, rec);
         await st.put('rec', rec);
         await st.setAlarm(rec.nextAt);
         return json({ ok: true, nextAt: rec.nextAt });
       }
       case '/api/active': {
         if (!rec) return json({ ok: false, error: 'not registered' }, 404);
-        rec.intervalSec = clampInterval(body.intervalSec || rec.intervalSec);
+        Object.assign(rec, readPace(body, rec));
         const forSec = Math.max(60, Math.min(3600, Number(body.activeForSec) || 360));
         rec.activeUntil = now + forSec * 1000;
         // 页面在前台时本地计时器负责发送；若页面意外没报告“切后台”，到期后服务器自动接管
@@ -174,7 +210,7 @@ export class PushClient {
       }
       case '/api/status': {
         if (!rec) return json({ ok: false, error: 'not registered' }, 404);
-        return json({ ok: true, intervalSec: rec.intervalSec, nextAt: rec.nextAt, activeUntil: rec.activeUntil, failures: rec.failures });
+        return json({ ok: true, minSec: rec.minSec, maxSec: rec.maxSec, dnd: rec.dnd, nextAt: rec.nextAt, activeUntil: rec.activeUntil, failures: rec.failures });
       }
     }
     return json({ ok: false, error: 'not found' }, 404);
@@ -187,6 +223,13 @@ export class PushClient {
     const now = Date.now();
     if (rec.nextAt > now + 1000) { await st.setAlarm(rec.nextAt); return; }
 
+    if (inDnd(now, rec.dnd)) {                              // 勿扰中：不推，顺延
+      rec.activeUntil = 0;
+      rec.nextAt = nextTime(now, rec);
+      await st.put('rec', rec);
+      await st.setAlarm(rec.nextAt);
+      return;
+    }
     let r;
     try { r = await sendPush(this.env, rec.subscription, { t: 'msg', at: now }); }
     catch (e) { r = { status: 0, text: String(e) }; }
@@ -199,7 +242,7 @@ export class PushClient {
     if (rec.failures >= 20) { await st.deleteAll(); return; }
 
     rec.activeUntil = 0;
-    rec.nextAt = now + rec.intervalSec * 1000;
+    rec.nextAt = nextTime(now, rec);
     await st.put('rec', rec);
     await st.setAlarm(rec.nextAt);
   }
