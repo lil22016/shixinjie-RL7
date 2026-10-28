@@ -32,6 +32,8 @@ function pace(){
     var mm=window.RL7Pace&&RL7Pace.minMax(); if(mm){o.minSec=mm.min;o.maxSec=mm.max;}
     var d=window.RL7Pace&&RL7Pace.dnd(); if(d)o.dnd={start:d.start,end:d.end,tzo:new Date().getTimezoneOffset()};
   }catch(e){}
+  o.proactive=proactiveOn();
+  try{ o.replies=window.RL7PendingReply?RL7PendingReply.list():[]; }catch(e){ o.replies=[]; }
   return o;
 }
 function withPace(b){var p=pace();for(var k in p)b[k]=p[k];return b;}
@@ -92,36 +94,50 @@ function buildSnapshot(){
     if(Storage.getEmojiMixing())emojis=(Storage.getEmojis()||[]).map(function(e){return e.char;}).filter(Boolean);
     if(Storage.getKaomojiMixing())kaomojis=(Storage.getKaomojis()||[]).map(function(k){return k.text;}).filter(Boolean);
   }catch(e){}
-  return {enabled:proactiveOn(),chatId:chatId,partnerName:name,cards:sample(cards,1500),emojis:sample(emojis,200),kaomojis:sample(kaomojis,200),spellCard:spell,savedAt:Date.now()};
+  /* V98：回复任意角色的聊天都要能用对应的字卡 */
+  var main=[],subs={},names={};
+  try{
+    (Storage.getCards()||[]).forEach(function(c){ if(c&&c.text&&c.category!=='格言')main.push(String(c.text).slice(0,300)); });
+    var bl=Storage.getBlockedSubCards()||[];
+    (Storage.getSubCards()||[]).forEach(function(c){ if(c&&c.text&&bl.indexOf(c.id)<0){ var k=String(c.partnerId); (subs[k]=subs[k]||[]).push(String(c.text).slice(0,300)); } });
+    Object.keys(subs).forEach(function(k){subs[k]=sample(subs[k],600);});
+    (Storage.getPartnerProfiles()||[]).forEach(function(p){ names[String(p.id)]=p.nickname||'对方'; });
+  }catch(e){}
+  return {main:sample(main,1500),subs:subs,names:names,enabled:proactiveOn(),chatId:chatId,partnerName:name,cards:sample(cards,1500),emojis:sample(emojis,200),kaomojis:sample(kaomojis,200),spellCard:spell,savedAt:Date.now()};
 }
 function writeSnapshot(){ return db().then(function(d){return kvSet(d,'snapshot',buildSnapshot());}).catch(function(){}); }
 
 /* ---------- 后台收到的消息 → 写入聊天记录 ---------- */
 var draining=false;
+var drainP=null;
 function drainQueue(){
-  if(draining)return Promise.resolve(); draining=true;
+  if(draining)return drainP||Promise.resolve(); draining=true;
   var d;
-  return db().then(function(x){d=x;return kvGet(d,'queue');}).then(function(q){
+  return (drainP=db().then(function(x){d=x;return kvGet(d,'queue');}).then(function(q){
     if(!q||!q.length)return;
     return kvSet(d,'queue',[]).then(function(){
       var byChat={};
       q.forEach(function(m){(byChat[m.chatId]=byChat[m.chatId]||[]).push(m);});
       Object.keys(byChat).forEach(function(cid){
-        var msgs=Storage.getMessages(cid)||[], seen={}, added=[];
+        var msgs=Storage.getMessages(cid)||[], seen={}, added=[], readChanged=false;
         msgs.forEach(function(m){seen[String(m.id)]=1;});
         byChat[cid].forEach(function(m){
-          if(seen[String(m.id)])return;
+          /* 后台推送已经替这条回复「交卷」：本地不要再回一遍 */
+          if(m.pendingId){ try{ window.RL7PendingReply&&RL7PendingReply.consumed(m.pendingId); }catch(e){} }
+          /* 回复前先已读：把这之前我发的消息标成已读 */
+          if(m.markRead){ msgs.forEach(function(x){ if(x&&x.type==='self'&&!x.read&&!x.isRecall&&!x.isCall&&(x.time||0)<=m.time){x.read=true;readChanged=true;} }); }
+          if(!m.text||seen[String(m.id)])return;
           var nm={id:m.id,type:'other',text:m.text,time:m.time,msgType:'text',viaPush:true};
           msgs.push(nm); added.push(nm);
         });
-        if(!added.length)return;
+        if(!added.length){ if(readChanged){ Storage.setMessages(cid,msgs); try{ if(typeof _safeRenderChat==='function')_safeRenderChat(cid); }catch(e){} } return; }
         msgs.sort(function(a,b){return (a.time||0)-(b.time||0);});
         Storage.setMessages(cid,msgs);
         try{ if(typeof updateLastMsg==='function')updateLastMsg(cid,added[added.length-1].text); }catch(e){}
         try{ if(typeof _safeRenderChat==='function')_safeRenderChat(cid); }catch(e){}
       });
     });
-  }).catch(function(){}).then(function(){draining=false;});
+  }).catch(function(){}).then(function(){draining=false;}));
 }
 
 /* ---------- 订阅 ---------- */
@@ -153,12 +169,10 @@ function subscribe(){
 }
 function registerNow(keepalive){
   var sub=savedSub(); if(!sub)return Promise.resolve();
-  if(!proactiveOn())return post('/api/unregister',{},keepalive).catch(function(){});
   return post('/api/register',withPace({subscription:sub,nextAt:nextLocalTime()}),keepalive).catch(function(){});
 }
 function markActive(){
   if(!isOn()||!savedSub())return;
-  if(!proactiveOn()){post('/api/unregister',{}).catch(function(){});return;}
   post('/api/active',withPace({activeForSec:360,nextAt:nextLocalTime()})).then(function(r){
     if(r&&r.error==='not registered')registerNow(false).then(function(){post('/api/active',withPace({activeForSec:360,nextAt:nextLocalTime()}));});
   }).catch(function(){});
@@ -190,7 +204,7 @@ function refreshUI(){
   if(!supported())return setStatus(isIOS()&&!isStandalone()?'iPhone 需先「添加到主屏幕」，从主屏图标打开后再开启（iOS 16.4+）':'当前浏览器不支持网页推送');
   if(!isOn())return setStatus('关掉后台保活也能收到消息，需允许通知');
   if(Notification.permission!=='granted')return setStatus('通知权限被关闭，请在系统设置里允许');
-  setStatus(proactiveOn()?'已开启：切到后台后由推送服务按间隔叫醒':'已开启，但「主动发送」未开，后台不会推送');
+  setStatus(proactiveOn()?'已开启：切到后台后也能收到回复和主动消息':'已开启：切到后台后也能收到回复（「主动发送」未开，不会主动找你）');
 }
 function toast(t){ try{Core.toast(t);}catch(e){} }
 function enable(){

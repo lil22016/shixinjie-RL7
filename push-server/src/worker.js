@@ -149,6 +149,34 @@ function nextTime(from, rec) {
 }
 export const _pace = { readPace, inDnd, dndEndAfter, nextTime };
 
+
+/* ---------------- 等待中的回复（V98） ----------------
+ * rec.replies = [{ id, at, chatId }]：用户发了消息、页面切到后台时交过来的「几点该回复」。
+ * rec.proactive = false 时只管回复，不发主动消息。
+ */
+const FAR = 8640000000000000;
+function readReplies(body, rec) {
+  if (!Array.isArray(body.replies)) return (rec && rec.replies) || [];
+  const now = Date.now();
+  return body.replies
+    .filter(r => r && /^[\w-]{1,64}$/.test(String(r.id)) && Number(r.at) > now - 7 * 86400000)
+    .slice(0, 30)
+    .map(r => ({ id: String(r.id), at: Math.max(Number(r.at), now + 2000), chatId: String(r.chatId || '').slice(0, 64) }));
+}
+function readProactive(body, rec) {
+  if (typeof body.proactive === 'boolean') return body.proactive;
+  return rec && typeof rec.proactive === 'boolean' ? rec.proactive : true;
+}
+function wakeAt(rec) {
+  let t = rec.proactive === false ? FAR : (rec.nextAt || FAR);
+  for (const r of rec.replies || []) t = Math.min(t, r.at);
+  return t;
+}
+async function arm(st, rec) {
+  const t = wakeAt(rec);
+  if (t >= FAR) await st.deleteAlarm(); else await st.setAlarm(t);
+}
+
 /* ---------------- Durable Object：每个设备一个，用 alarm 精确排期 ---------------- */
 export class PushClient {
   constructor(state, env) {
@@ -173,19 +201,23 @@ export class PushClient {
           activeUntil: 0,
           failures: 0,
         }, readPace(body, null));
+        rec.proactive = readProactive(body, null);
+        rec.replies = readReplies(body, null);
         rec.nextAt = Number(body.nextAt) > now ? Number(body.nextAt) : nextTime(now, rec);
         await st.put('rec', rec);
-        await st.setAlarm(rec.nextAt);
-        return json({ ok: true, nextAt: rec.nextAt });
+        await arm(st, rec);
+        return json({ ok: true, nextAt: rec.nextAt, replies: rec.replies.length });
       }
       case '/api/schedule': {
         if (!rec) return json({ ok: false, error: 'not registered' }, 404);
         Object.assign(rec, readPace(body, rec));
+        rec.proactive = readProactive(body, rec);
+        rec.replies = readReplies(body, rec);
         rec.activeUntil = 0;
         rec.nextAt = Number(body.nextAt) > now ? Number(body.nextAt) : nextTime(now, rec);
         await st.put('rec', rec);
-        await st.setAlarm(rec.nextAt);
-        return json({ ok: true, nextAt: rec.nextAt });
+        await arm(st, rec);
+        return json({ ok: true, nextAt: rec.nextAt, replies: rec.replies.length });
       }
       case '/api/active': {
         if (!rec) return json({ ok: false, error: 'not registered' }, 404);
@@ -194,8 +226,10 @@ export class PushClient {
         rec.activeUntil = now + forSec * 1000;
         // 页面在前台时本地计时器负责发送；若页面意外没报告“切后台”，到期后服务器自动接管
         rec.nextAt = Math.max(rec.activeUntil, Number(body.nextAt) || 0);
+        rec.proactive = readProactive(body, rec);
+        rec.replies = [];                                     // 页面在前台：回复由页面自己处理
         await st.put('rec', rec);
-        await st.setAlarm(rec.nextAt);
+        await arm(st, rec);
         return json({ ok: true, nextAt: rec.nextAt });
       }
       case '/api/test': {
@@ -210,7 +244,7 @@ export class PushClient {
       }
       case '/api/status': {
         if (!rec) return json({ ok: false, error: 'not registered' }, 404);
-        return json({ ok: true, minSec: rec.minSec, maxSec: rec.maxSec, dnd: rec.dnd, nextAt: rec.nextAt, activeUntil: rec.activeUntil, failures: rec.failures });
+        return json({ ok: true, proactive: rec.proactive !== false, replies: rec.replies || [], minSec: rec.minSec, maxSec: rec.maxSec, dnd: rec.dnd, nextAt: rec.nextAt, activeUntil: rec.activeUntil, failures: rec.failures });
       }
     }
     return json({ ok: false, error: 'not found' }, 404);
@@ -221,30 +255,35 @@ export class PushClient {
     const rec = await st.get('rec');
     if (!rec) return;
     const now = Date.now();
-    if (rec.nextAt > now + 1000) { await st.setAlarm(rec.nextAt); return; }
+    const gone = r => r && (r.status === 404 || r.status === 410);   // 订阅已失效（卸载/清数据/关闭通知）
+    const push = async payload => {
+      try { return await sendPush(this.env, rec.subscription, payload); }
+      catch (e) { return { status: 0, text: String(e) }; }
+    };
 
-    if (inDnd(now, rec.dnd)) {                              // 勿扰中：不推，顺延
+    /* ① 到点的回复（用户主动发的消息，不受勿扰限制） */
+    const due = (rec.replies || []).filter(r => r.at <= now + 1000);
+    rec.replies = (rec.replies || []).filter(r => r.at > now + 1000);
+    for (const r of due) {
+      const res = await push({ t: 'reply', pid: r.id, chatId: r.chatId, at: now });
+      if (gone(res)) { await st.deleteAll(); return; }
+    }
+
+    /* ② 主动消息 */
+    if (rec.proactive !== false && rec.nextAt <= now + 1000) {
+      if (inDnd(now, rec.dnd)) {                            // 勿扰中：不推，顺延
+        rec.nextAt = nextTime(now, rec);
+      } else {
+        const res = await push({ t: 'msg', at: now });
+        if (gone(res)) { await st.deleteAll(); return; }
+        rec.failures = res.status >= 200 && res.status < 300 ? 0 : (rec.failures || 0) + 1;
+        if (rec.failures >= 20) { await st.deleteAll(); return; }
+        rec.nextAt = nextTime(now, rec);
+      }
       rec.activeUntil = 0;
-      rec.nextAt = nextTime(now, rec);
-      await st.put('rec', rec);
-      await st.setAlarm(rec.nextAt);
-      return;
     }
-    let r;
-    try { r = await sendPush(this.env, rec.subscription, { t: 'msg', at: now }); }
-    catch (e) { r = { status: 0, text: String(e) }; }
-
-    if (r.status === 404 || r.status === 410) {           // 订阅已失效（卸载/清数据/关闭通知）
-      await st.deleteAll();
-      return;
-    }
-    rec.failures = r.status >= 200 && r.status < 300 ? 0 : (rec.failures || 0) + 1;
-    if (rec.failures >= 20) { await st.deleteAll(); return; }
-
-    rec.activeUntil = 0;
-    rec.nextAt = nextTime(now, rec);
     await st.put('rec', rec);
-    await st.setAlarm(rec.nextAt);
+    await arm(st, rec);
   }
 }
 

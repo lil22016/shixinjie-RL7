@@ -1,5 +1,5 @@
-/* RL7 service worker — version 2026-10-20-v92chat1 */
-const RL7_SW_VERSION='2026-10-20-v92chat1';
+/* RL7 service worker — version 2026-10-28-v98reply1 */
+const RL7_SW_VERSION='2026-10-28-v98reply1';
 self.addEventListener('install',function(){self.skipWaiting();});
 self.addEventListener('activate',function(e){e.waitUntil(self.clients.claim());});
 self.addEventListener('message',function(e){if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
@@ -20,8 +20,8 @@ function kvGet(db,k){return new Promise(function(res,rej){const q=db.transaction
 function kvSet(db,k,v){return new Promise(function(res,rej){const t=db.transaction(PUSH_STORE,'readwrite');t.objectStore(PUSH_STORE).put(v,k);t.oncomplete=function(){res();};t.onerror=function(){rej(t.error);};});}
 function pick(a){return a[Math.floor(Math.random()*a.length)];}
 
-function composeFromSnapshot(s){
-  const cards=(s&&s.cards)||[];
+function composeFromSnapshot(s,pool){
+  const cards=pool||(s&&s.cards)||[];
   if(!cards.length)return '';
   const parts=[];
   const base=pick(cards);const texts=[base];
@@ -34,25 +34,42 @@ function composeFromSnapshot(s){
   if(s.kaomojis&&s.kaomojis.length&&Math.random()<0.20)parts.splice(Math.floor(Math.random()*(parts.length+1)),0,pick(s.kaomojis));
   return parts.join('');
 }
+/* V98：回复某个聊天时，和网页里一样——有该角色专属字卡时一半概率用专属字卡 */
+function poolFor(s,chatId){
+  const pid=String(chatId||'').replace('partner_','');
+  const main=(s&&s.main)||(s&&s.cards)||[];
+  const sub=(s&&s.subs&&s.subs[pid])||[];
+  if(sub.length&&main.length)return Math.random()<.5?sub:main;
+  return sub.length?sub:main;
+}
+function nameFor(s,chatId){
+  const pid=String(chatId||'').replace('partner_','');
+  return (s&&s.names&&s.names[pid])||(s&&s.partnerName)||'对方';
+}
 
 async function handlePush(data){
+  data=data||{};
   let snap=null,db=null;
   try{db=await pushDb();snap=await kvGet(db,'snapshot');}catch(e){}
-  const name=(snap&&snap.partnerName)||'对方';
+  const isReply=data.t==='reply';
+  const chatId=isReply?(data.chatId||(snap&&snap.chatId)||''):((snap&&snap.chatId)||'');
+  const name=nameFor(snap,chatId);
   let text='';
-  if(data&&data.test)text='推送测试成功，关掉后台保活也能收到消息啦';
+  if(data.test)text='推送测试成功，关掉后台保活也能收到消息啦';
+  else if(isReply)text=snap?composeFromSnapshot(snap,poolFor(snap,chatId)):'';
   else if(snap&&snap.enabled!==false)text=composeFromSnapshot(snap);
-  if(!text)text='给你发来一条消息';
 
-  if(db&&snap&&snap.chatId&&!(data&&data.test)){
+  if(db&&chatId&&!data.test){
     try{
       const q=(await kvGet(db,'queue'))||[];
       const now=Date.now();
-      q.push({id:now+Math.floor(Math.random()*1000),chatId:snap.chatId,text:text,time:now});
+      /* 回复：即使没抽到字卡也要入队，好让已读状态和「等待中的回复」被正确消化 */
+      if(text||isReply)q.push({id:now+Math.floor(Math.random()*1000),chatId:chatId,text:text,time:now,pendingId:data.pid||'',markRead:isReply});
       while(q.length>50)q.shift();
       await kvSet(db,'queue',q);
     }catch(e){}
   }
+  if(!text)text=isReply?'已读':'给你发来一条消息';
   /* 页面若开着就让它立刻把队列写入聊天记录 */
   try{
     const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
@@ -60,12 +77,12 @@ async function handlePush(data){
   }catch(e){}
 
   /* iOS 要求每条推送都必须弹出可见通知 */
-  return self.registration.showNotification('『'+name+'』发来消息',{
+  return self.registration.showNotification('『'+name+'』'+(isReply&&text==='已读'?'已读了你的消息':'发来消息'),{
     body:text,
     tag:'rl7-msg-'+Date.now(),
     icon:'./favicon.svg',
     badge:'./favicon.svg',
-    data:{url:self.registration.scope,chatId:(snap&&snap.chatId)||''}
+    data:{url:self.registration.scope,chatId:chatId}
   });
 }
 
