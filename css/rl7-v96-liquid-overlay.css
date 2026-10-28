@@ -14,7 +14,8 @@ html.liquid-theme :is(.confirm-overlay, .modal-overlay, .status-picker-overlay,
   .form-modal-overlay, .sticker-url-import-overlay, .shop-overlay) {
   opacity: 1 !important;
   visibility: hidden;
-  transition: visibility 0s linear .18s !important;
+  /* 不能给隐藏加延迟：样式加载那一刻会让所有收着的弹窗闪出来一下（V99 修复） */
+  transition: none !important;
 }
 html.liquid-theme :is(.confirm-overlay.active, .modal-overlay.active, .status-picker-overlay.active,
   .form-modal-overlay.active, .sticker-url-import-overlay.active:not(.closing), .shop-overlay.show) {
