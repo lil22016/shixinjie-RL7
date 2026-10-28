@@ -25,7 +25,7 @@ document.addEventListener('pointerup',block,true);
 document.addEventListener('touchend',block,{capture:true,passive:false});
 function boot(){
   lock(document);
-  new MutationObserver(function(){lock(document)}).observe(document.body,{childList:true,subtree:true});
+  var __q=false;new MutationObserver(function(){if(__q)return;__q=true;requestAnimationFrame(function(){__q=false;lock(document)})}).observe(document.body,{childList:true,subtree:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

@@ -53,6 +53,19 @@ const PartnerFreeWill = {
       return 0;
     }
     if (now < next) return 0; // 未到期：静默（进入页面只检查不强制）
+    // liveOnly（发到聊天里的行为）：网站关着 / 在后台时错过的不补发，
+    // 否则一打开网站就会立刻收到一条，显得很机械。改为打开后随机过一阵再发。
+    if (cfg.liveOnly) {
+      var missedWhileAway = now - next > this._checkIntervalMs + 60000;
+      var quiet = false;
+      try { quiet = !!(window.RL7Pace && RL7Pace.inDnd(now)); } catch (e) {}
+      if (missedWhileAway || quiet) {
+        var later = now + this._randMs(cfg.resumeMin || 15, cfg.resumeMax || 90);
+        try { if (window.RL7Pace && RL7Pace.inDnd(later)) later = RL7Pace.nextTime(later); } catch (e) {}
+        Storage.set(nextKey, later);
+        return 0;
+      }
+    }
     // 到期：按平均间隔折算"该发生几次"，但最多补 catchUpMax 条，避免长时间未开站点后补爆
     var avg = (cfg.min + cfg.max) / 2 * 60000;
     var owed = Math.floor((now - next) / avg) + 1;
