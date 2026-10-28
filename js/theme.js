@@ -19,7 +19,8 @@ const ThemeManager = {
     { id: 'light-yellow', name: '浅黄', color: '#F5E0A0' },
     { id: 'light-green', name: '浅绿', color: '#B0D8C0' },
     { id: 'white', name: '黑白', color: '#FFFFFF' },
-    { id: 'black', name: '暗夜', color: '#5A5A6A' }
+    { id: 'black', name: '暗夜', color: '#5A5A6A' },
+    { id: 'liquid', name: 'Liquid Glass', color: '#DDE2E7' }
   ],
 
   currentTheme: 'default',

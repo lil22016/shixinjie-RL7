@@ -263,6 +263,7 @@ function install(){
    let saved=Storage.get('theme','default');
    if(saved==='liquid'&&ThemeManager.currentTheme!=='liquid'){ThemeManager.currentTheme='liquid';ThemeManager.apply(false)}
  }catch(e){}
+ try{let rv=localStorage.getItem('rl7_liquid_readability_v1');if(rv!==null&&active())readability(rv)}catch(e){}
  applyLiquid();controls();restore();return true;
 }
 function boot(){style();let n=0,t=setInterval(()=>{if(install()||++n>60)clearInterval(t)},200)}

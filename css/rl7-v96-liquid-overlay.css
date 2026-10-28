@@ -1,0 +1,51 @@
+/* RL7 V96 — Liquid Glass：弹窗不再「先黑后玻璃」
+ *
+ * 原因：这些弹窗打开时，外层遮罩或面板本身是从 opacity:0 淡入的。
+ * iOS/Safari 上，只要元素或它的外层还处在半透明状态，backdrop-filter（毛玻璃模糊）就不会生效，
+ * 所以淡入的那 0.2~0.3 秒里只看得到玻璃下面的深色底，淡入结束后模糊才突然出现。
+ *
+ * 做法（只在 Liquid Glass 主题下）：弹窗出现时不再改透明度，改为用 `scale` 轻微弹出。
+ * 用独立的 scale 属性而不是 transform，不会覆盖各面板自己用于定位的 transform。
+ */
+@keyframes rl7GlassPop { from { scale: .95; } to { scale: 1; } }
+
+/* ① 用 opacity 过渡显示的弹窗：改用 visibility 切换显示，面板弹出 */
+html.liquid-theme :is(.confirm-overlay, .modal-overlay, .status-picker-overlay,
+  .form-modal-overlay, .sticker-url-import-overlay, .shop-overlay) {
+  opacity: 1 !important;
+  visibility: hidden;
+  transition: visibility 0s linear .18s !important;
+}
+html.liquid-theme :is(.confirm-overlay.active, .modal-overlay.active, .status-picker-overlay.active,
+  .form-modal-overlay.active, .sticker-url-import-overlay.active:not(.closing), .shop-overlay.show) {
+  visibility: visible;
+  transition: none !important;
+}
+html.liquid-theme :is(.confirm-overlay.active, .modal-overlay.active, .status-picker-overlay.active,
+  .form-modal-overlay.active, .sticker-url-import-overlay.active:not(.closing), .shop-overlay.show) > * {
+  animation: rl7GlassPop .2s cubic-bezier(.2, .9, .3, 1.15);
+}
+
+/* ② 用 opacity 关键帧打开的弹窗：去掉淡入，面板弹出 */
+html.liquid-theme :is(.voice-send-overlay, .rp-action-overlay, .rp-detail-overlay, .decision-overlay,
+  .black-overlay, .forward-target-overlay) {
+  animation: none !important;
+  opacity: 1 !important;
+}
+html.liquid-theme :is(.voice-send-overlay, .rp-action-overlay, .rp-detail-overlay, .decision-overlay,
+  .black-overlay, .forward-target-overlay) > * {
+  animation: rl7GlassPop .2s cubic-bezier(.2, .9, .3, 1.15);
+}
+
+/* ③ 玻璃面板自己从透明淡入的：只保留弹出 */
+html.liquid-theme :is(.period-reminder-overlay, .game-overlay-panel, .moments-sheet) {
+  animation: rl7GlassPop .2s cubic-bezier(.2, .9, .3, 1.15) !important;
+  opacity: 1 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.liquid-theme :is(.confirm-overlay, .modal-overlay, .status-picker-overlay, .form-modal-overlay,
+    .sticker-url-import-overlay, .shop-overlay, .voice-send-overlay, .rp-action-overlay, .rp-detail-overlay,
+    .decision-overlay, .black-overlay, .forward-target-overlay) > *,
+  html.liquid-theme :is(.period-reminder-overlay, .game-overlay-panel, .moments-sheet) { animation: none !important; }
+}

@@ -9,6 +9,11 @@
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.webmanifest?v=20260928blacktop1">
   <title>拾心界</title>
+<script>/* 在第一次画面出来之前就套上已保存的主题，避免先显示默认主题再切换（V97） */
+(function(){try{var r=document.documentElement,t=JSON.parse(localStorage.getItem('mirror_theme')||'null');
+if(t&&t!=='custom')r.setAttribute('data-theme',t);
+if(t==='liquid'){r.classList.add('liquid-theme');var v=localStorage.getItem('rl7_liquid_readability_v1');
+if(v!==null){v=Math.max(0,Math.min(100,Number(v)||0));r.style.setProperty('--lg-blur',(3+v*.17).toFixed(1)+'px');r.style.setProperty('--lg-alpha',(.055+v*.00155).toFixed(3));}}}catch(e){}})();</script>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/rl7-bugfix-nyx-cards-v3.css?v=20260917v3">
   <link rel="stylesheet" href="css/rl7-home-badge-layout-hotfix-v4.css?v=20260917v4">
@@ -54,6 +59,7 @@
 
 <link rel="stylesheet" href="css/rl7-unified-ux-v1.css?v=20260918v52">
 <link rel="stylesheet" href="css/rl7-v64-liquid-dark-sweep.css?v=20260919v72">
+<link rel="stylesheet" id="rl7-liquid-v47-style" href="css/rl7-liquid-base.css?v=20261027v97">
 </head>
 <body>
 <div id="rl7-liquid-wallpaper" aria-hidden="true"></div>
@@ -2230,7 +2236,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <script src="js/core.js?v=20260822g"></script>
-<script src="js/theme.js?v=20260910d"></script>
+<script src="js/theme.js?v=20261027v97"></script>
 <script src="js/data.js?v=20260822g"></script>
 <script src="js/storage.js?v=20261002persist3"></script>
 <script src="js/navigation.js?v=20260904b"></script>
@@ -2291,7 +2297,7 @@
 <script src="js/private-frequency-bluefy.js?v=20260917bluefy1"></script>
 <script src="js/rl7-bugfix-nyx-cards-v3.js?v=20260917v3"></script>
 <script src="js/rl7-home-badge-layout-hotfix-v4.js?v=20260917v4"></script>
-<script src="js/rl7-daily-quote-fix-v28.js?v=20260918v49"></script>
+<script src="js/rl7-daily-quote-fix-v28.js?v=20261027v97"></script>
 <script src="js/rl7-v56-contrast-sweep.js?v=20260919v72"></script>
 <script src="js/rl7-shop-card-sender-lock-v38.js?v=20260918v38"></script>
 <script src="js/rl7-moments-reply-fix-v45.js?v=20260918v45"></script>
@@ -2316,5 +2322,6 @@
 <link rel="stylesheet" href="css/rl7-v76-moments-timeline.css?v=20260919v76">
 <link rel="stylesheet" href="css/rl7-v88-cards.css?v=20260920v88">
 <link rel="stylesheet" href="css/rl7-v90-small-fixes.css?v=20260921v90">
+<link rel="stylesheet" href="css/rl7-v96-liquid-overlay.css?v=20261027v96">
 </body>
 </html>
