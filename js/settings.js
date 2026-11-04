@@ -1258,7 +1258,12 @@ function exportFullBackup() {
           media: media
         };
         _backupOverlayShow('正在打包备份文件…');
-        return _packJsonInWorker(data);
+        /* V101：补上其它设置和聊天背景 / 通话背景 / 手帐照片 / 提示音 / 玻璃壁纸 */
+        var extras = window.RL7BackupExtras ? RL7BackupExtras.collect() : Promise.resolve(null);
+        return extras.catch(function() { return null; }).then(function(x) {
+          if (x) { data.version = 5; data.extraLocal = x.local; data.extraIDB = x.idb; }
+          return _packJsonInWorker(data);
+        });
       }).then(function(json) {
         var blob = new Blob([json], { type: 'application/json' });
         var url = URL.createObjectURL(blob);
@@ -1369,6 +1374,10 @@ function importFullBackup() {
             }
             return null;
           });
+          // 3.1) V101：其它设置 + 聊天背景 / 通话背景 / 手帐照片 / 提示音 / 玻璃壁纸
+          if (window.RL7BackupExtras && (data.extraLocal || data.extraIDB)) {
+            chain = chain.then(function() { return RL7BackupExtras.restore(data); });
+          }
           // 4) 等待全部持久化（localStorage + IndexedDB）落盘完成才刷新，
           //    避免 reload 打断消息/聊天/字卡的异步 IDB 防抖写，导致导入数据被旧数据回滚/丢失
           chain.then(function() {
