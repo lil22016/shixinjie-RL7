@@ -10,9 +10,14 @@
 (function(){
 'use strict';
 var KEY='rl7.appIcon.v1';
-var DEFAULT='icons/apple-touch-icon.png';
+var DEFAULT='icons/apple-touch-icon.png?v=20261104';
+/* V103：存进 IndexedDB（本机设置区 localStorage 常被聊天副本占满，存不下图片） */
+var IDB='rl7_app_icon_db',STORE='icon',cached='';
+function idb(){ return new Promise(function(res,rej){ var q=indexedDB.open(IDB,1); q.onupgradeneeded=function(){ if(!q.result.objectStoreNames.contains(STORE)) q.result.createObjectStore(STORE); }; q.onsuccess=function(){ res(q.result); }; q.onerror=function(){ rej(q.error); }; }); }
+function idbGet(){ return idb().then(function(d){ return new Promise(function(res){ var r=d.transaction(STORE).objectStore(STORE).get('icon'); r.onsuccess=function(){ d.close(); res(r.result||''); }; r.onerror=function(){ d.close(); res(''); }; }); }).catch(function(){ return ''; }); }
+function idbSet(v){ return idb().then(function(d){ return new Promise(function(res,rej){ var t=d.transaction(STORE,'readwrite'); v?t.objectStore(STORE).put(v,'icon'):t.objectStore(STORE).delete('icon'); t.oncomplete=function(){ d.close(); res(); }; t.onerror=function(){ d.close(); rej(t.error); }; }); }); }
 
-function get(){ try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
+function get(){ if(cached) return cached; try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
 function apply(){
   var href=get()||DEFAULT;
   var links=document.querySelectorAll('link[rel="apple-touch-icon"]');
@@ -76,19 +81,22 @@ function inject(){
   file.onchange=function(){
     var f=file.files&&file.files[0];file.value='';if(!f)return;
     toIcon(f).then(function(d){
-      try{ localStorage.setItem(KEY,d); }catch(e){ return toast('保存失败：存储空间不够'); }
-      apply();render();toast('图标已更新，重新添加到主屏幕后生效');
+      return idbSet(d).then(function(){
+        cached=d; try{ localStorage.removeItem(KEY); }catch(e){}
+        apply();render();toast('图标已更新，重新添加到主屏幕后生效');
+      });
     }).catch(function(e){ toast(e.message||'处理图片失败'); });
   };
   box.querySelector('.rl7-appicon-reset').onclick=function(){
     try{ localStorage.removeItem(KEY); }catch(e){}
-    apply();render();toast('已恢复默认图标');
+    cached=''; idbSet('').catch(function(){}).then(function(){ apply();render();toast('已恢复默认图标'); });
   };
   render();
   return true;
 }
 
 apply();
+idbGet().then(function(v){ if(v){ cached=v; apply(); render(); } });
 function init(){ apply(); inject(); }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 setTimeout(init,1500);
