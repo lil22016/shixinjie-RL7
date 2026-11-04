@@ -507,6 +507,14 @@
       if(typeof renderChatMessages==='function')renderChatMessages(id);
       if(window.App&&App.playSound)App.playSound(mode==='other'?'receive':'send');
     }catch(e){console.error(e);}
+    /* V100：我拍对方 = 发出一条消息，要触发对方回复（以及原版的一半概率回拍）。
+       这个改写版本之前漏了这一步，所以拍一拍从来不会被回复。 */
+    if(mode!=='other'){
+      try{
+        if(typeof window.schedulePatAutoReplyFlow==='function')window.schedulePatAutoReplyFlow(id);
+        else if(typeof window.scheduleAutoReply==='function')window.scheduleAutoReply(id);
+      }catch(e){console.error(e);}
+    }
   }
   function savePatLines(lines){
     var phrases=uniq(lines), old=pats(), group=window._patCurrentGroup||'基础';

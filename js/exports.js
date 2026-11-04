@@ -29,7 +29,7 @@ window.ShopApp = ShopApp;
   if (old) old.remove();
   var s = document.createElement('script');
   s.id = 'rl7-patches-loader';
-  s.src = 'js/rl7-patches.js?v=20260923darkchrome1';
+  s.src = 'js/rl7-patches.js?v=20261103pat1';
   s.async = false;
   document.head.appendChild(s);
 })();
