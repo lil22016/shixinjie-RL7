@@ -1204,7 +1204,34 @@ function _parseJsonInWorker(bytes) {
    - 不再依赖 JSZip / ZIP / CompressionStream，全平台只产出一个 .json 文件；
    - stringify + Blob 打包放 Web Worker，移动端不再卡死无反应；
    - 导出过程有进度遮罩，完成后自动下载单个 JSON。 */
+/* V102：全量备份 = 整个网站本机数据的完整复制（所有本机设置 + 所有数据库原样），见 js/rl7-v102-full-clone.js。
+   复制失败时退回旧版按功能导出。 */
 function exportFullBackup() {
+  if (!window.RL7FullClone) return _exportFullBackupLegacy();
+  _backupOverlayShow('正在读取全部本机数据…');
+  RL7FullClone.exportAll().then(function(clone) {
+    var sum = RL7FullClone.summarize(clone);
+    _backupOverlayShow('正在打包备份文件（' + sum.dbs + ' 个数据库，' + sum.records + ' 条记录）…');
+    var data = { app: '拾心界', version: 6, exportedAt: new Date().toISOString(), fullClone: clone, summary: sum };
+    return _packJsonInWorker(data).then(function(json) {
+      var blob = new Blob([json], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = '拾心界_全量备份_' + Core.formatDate(new Date()) + '.json';
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      _backupOverlayHide();
+      Core.toast('全量备份已导出：' + sum.dbs + ' 个数据库、' + sum.records + ' 条记录、' + sum.localKeys + ' 项设置');
+    });
+  }).catch(function(err) {
+    _backupOverlayHide();
+    Core.toast('完整备份失败，改用旧版备份：' + (err && err.message ? err.message : err));
+    _exportFullBackupLegacy();
+  });
+}
+
+function _exportFullBackupLegacy() {
   try {
     _backupOverlayShow('正在读取聊天与表情数据…');
     var chats = Storage.getChats() || [];
@@ -1329,6 +1356,22 @@ function importFullBackup() {
         var mediaStore = parsed.mediaStore || {};
         if (!data || typeof data !== 'object' || data.app !== '拾心界' || !data.version) {
           Core.toast('不是有效的拾心界全量备份文件（缺少 app/version 字段）');
+          return;
+        }
+        // V102：完整复制格式（v6）——原样还原所有本机设置和数据库
+        if (data.fullClone && window.RL7FullClone) {
+          var fs = RL7FullClone.summarize(data.fullClone);
+          Core.dangerConfirm('恢复全量备份', '将用备份完整替换当前所有数据（' + fs.dbs + ' 个数据库、' + fs.records + ' 条记录、' + fs.localKeys + ' 项设置），当前数据会被替换且不可恢复。确定恢复？', function() {
+            _backupOverlayShow('正在恢复全部数据，请不要关闭页面…');
+            RL7FullClone.restoreAll(data.fullClone).then(function(failed) {
+              if (failed && failed.length) { _backupOverlayHide(); Core.toast('部分数据没能恢复：' + failed.join('；')); setTimeout(function() { location.reload(); }, 4000); return; }
+              Core.toast('备份恢复完成，页面即将刷新');
+              setTimeout(function() { location.reload(); }, 600);
+            }).catch(function(err4) {
+              _backupOverlayHide();
+              Core.toast('恢复失败：' + (err4 && err4.message ? err4.message : err4));
+            });
+          });
           return;
         }
         var summary = '将用备份文件覆盖当前所有数据（聊天记录、字卡、设置等），当前数据会被替换且不可恢复。';
